@@ -18,6 +18,7 @@ volume::~volume()
 	}
 }
 
+// get pointer to slice with z as normal
 float* volume::get_psliceZ(const uint64_t zLevel)
 {
 	if (zLevel != lastSliceZ)
@@ -39,6 +40,7 @@ float* volume::get_psliceZ(const uint64_t zLevel)
 	return sliceZ;
 }
 
+// get pointer to slice with x as normal
 float* volume::get_psliceX(const uint64_t xLevel)
 {
 	if (xLevel != lastSliceX)
@@ -60,6 +62,7 @@ float* volume::get_psliceX(const uint64_t xLevel)
 	return sliceX;
 }
 
+// get pointer to slice with y as normal
 float* volume::get_psliceY(const uint64_t yLevel)
 {
 	if (yLevel != lastSliceY)
@@ -100,12 +103,12 @@ float* volume::get_psliceY(const float yPos)
 	return get_psliceY(yIdx);
 }
 
-float volume::getLength(const uint8_t _dim)
+float volume::get_length(const uint8_t _dim)
 {
 	return (float) dim[_dim] * res[_dim];
 }
 
-void volume::allocMemory()
+void volume::alloc_memory()
 {
 	// if any memory was allocated before, make sure to free it first
 	if (isMemAlloc)
@@ -140,7 +143,7 @@ void volume::multiply(const float factor)
 }
 
 // define dimensions of dataset
-void volume::setDim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2)
+void volume::set_dim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2)
 {
 	dim[0] = dim0;
 	dim[1] = dim1;
@@ -149,26 +152,26 @@ void volume::setDim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim
 	return;
 }
 
-void volume::setDim(const uint64_t* _dim)
+void volume::set_dim(const uint64_t* _dim)
 {
-	setDim(_dim[0], _dim[1], _dim[2]);
+	set_dim(_dim[0], _dim[1], _dim[2]);
 	return;
 }
 
-void volume::setDim(const uint8_t _dim, const uint64_t newDim)
+void volume::set_dim(const uint8_t _dim, const uint64_t newDim)
 {
 	dim[_dim] = newDim;
 	nElements = dim[0] * dim[1] * dim[2];
 	return;
 }
 
-uint64_t volume::getDim(const uint8_t _dim) const
+uint64_t volume::get_dim(const uint8_t _dim) const
 {
 	return dim[_dim];
 }
 
 // set origin of volumetrix dataset
-void volume::setOrigin(const float* _origin)
+void volume::set_origin(const float* _origin)
 {
 	origin[0] = _origin[0];
 	origin[1] = _origin[1];
@@ -176,7 +179,7 @@ void volume::setOrigin(const float* _origin)
 	return;
 }
 
-void volume::setOrigin(const float origin0, const float origin1, const float origin2)
+void volume::set_origin(const float origin0, const float origin1, const float origin2)
 {
 	origin[0] = origin0;
 	origin[1] = origin1;
@@ -184,36 +187,36 @@ void volume::setOrigin(const float origin0, const float origin1, const float ori
 	return;
 }
 
-void volume::setOrigin(const uint8_t _dim, const float _origin)
+void volume::set_origin(const uint8_t _dim, const float _origin)
 {
 	origin[_dim] = _origin;
 	return;
 }
 
-float volume::getOrigin(const uint8_t _dim)
+float volume::get_origin(const uint8_t _dim)
 {
 	return origin[_dim];
 }
 
 // set resolution of volumetric dataset
-void volume::setRes(const float* dx)
+void volume::set_res(const float* dx)
 {
 	#pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
-		setRes(iDim, dx[iDim]);
+		set_res(iDim, dx[iDim]);
 	return; 
 }
 
 // define resolution in one go
-void volume::setRes(const float dx0, const float dx1, const float dx2)
+void volume::set_res(const float dx0, const float dx1, const float dx2)
 {
-	setRes(0, dx0);
-	setRes(1, dx1);
-	setRes(2, dx2);
+	set_res(0, dx0);
+	set_res(1, dx1);
+	set_res(2, dx2);
 	return;
 }
 
-void volume::setRes(const uint8_t _dim, const float _res)
+void volume::set_res(const uint8_t _dim, const float _res)
 {
 	if (_res <= 0)
 	{
@@ -226,7 +229,7 @@ void volume::setRes(const uint8_t _dim, const float _res)
 
 
 // sets whole array to a certain value
-void volume::setValue(const float value)
+void volume::set_value(const float value)
 {
 	unsigned int nElements = dim[0] * dim[1] * dim[2];
 	for (unsigned int iElement = 0; iElement < nElements; iElement++)
@@ -236,53 +239,60 @@ void volume::setValue(const float value)
 }
 
 // set only one specific value in volume defined by index
-void volume::setValue(
-	const unsigned int x0, const unsigned int x1, const unsigned int x2, const float value)
+void volume::set_value(
+	const uint64_t x0, const uint64_t x1, const uint64_t x2, const float value)
 {
 	unsigned int index = x0 + dim[0] * (x1 + x2 * dim[1]);
 	data[index] = value;
 	return;
 }
 
+void volume::set_value(const uint64_t iElem, const float value)
+{
+	data[iElem] = value;
+	return;
+}
+
 // set only one specific value in volume
-void volume::setValue(const uint64_t* pos, const float value)
+void volume::set_value(const uint64_t* pos, const float value)
 {
 	uint64_t index = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
 	data[index] = value;
 	return;
 }
 
-float volume::getValue(const unsigned int x0, const unsigned int x1, const unsigned int x2) const
+float volume::get_value(const uint64_t x0, const uint64_t x1, const uint64_t x2) const
 {
-	const unsigned int idx = x0 + dim[0] * (x1 + x2 * dim[2]);
+	const uint64_t idx = x0 + dim[0] * (x1 + x2 * dim[1]);
 	return data[idx];
 }
 
-float volume::getValue(const unsigned int iElem) const {return data[iElem];}
+float volume::get_value(const uint64_t iElem) const {return data[iElem];}
 
-float volume::getValue(const unsigned int* pos) const
+// pass position as a 3 element vector to indices
+float volume::get_value(const uint64_t* pos) const
 {
-	const unsigned int idx = pos[0] + dim[0] * (pos[1] + pos[2] * dim[2]);
+	const unsigned int idx = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
 	return data[idx];
 }
 
 // get position along axis
-float volume::getPos0(const uint64_t idx0) const
+float volume::get_pos0(const uint64_t idx0) const
 {
-	return getPos(idx0, 0);
+	return get_pos(idx0, 0);
 }
 
-float volume::getPos1(const uint64_t idx1) const
+float volume::get_pos1(const uint64_t idx1) const
 {
-	return getPos(idx1, 1);
+	return get_pos(idx1, 1);
 }
 
-float volume::getPos2(const uint64_t idx2) const
+float volume::get_pos2(const uint64_t idx2) const
 {
-	return getPos(idx2, 2);
+	return get_pos(idx2, 2);
 }
 
-float volume::getPos(const uint64_t idx, const uint8_t iDim) const
+float volume::get_pos(const uint64_t idx, const uint8_t iDim) const
 {
 	return origin[iDim] + (float) idx * res[iDim];
 }
@@ -398,7 +408,7 @@ void volume::readFromFile(const string filePath)
 	const hsize_t col_dims_data = nElements; 
 	H5::DataSpace mspaceData (1, &col_dims_data);	
 	filespace = dataDataset.getSpace();
-	allocMemory();
+	alloc_memory();
 	dataDataset.read(data, H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
 
 	isMemAlloc = 1;
@@ -419,20 +429,20 @@ void volume::printInformation() const
 	return;
 }
 
-float volume::getMinPos(const unsigned int _dim) const {return origin[_dim];}
-float volume::getMaxPos(const unsigned int _dim) const
+float volume::get_minPos(const uint8_t _dim) const {return origin[_dim];}
+float volume::get_maxPos(const uint8_t _dim) const
 {
 	return origin[_dim] + res[_dim] * ((float) dim[_dim] - 1.0);
 }
 
-float volume::getRangeLimitedPos(const float pos, const unsigned int _dim) const
+float volume::getRangeLimitedPos(const float pos, const uint8_t _dim) const
 {
 	float posOut = pos;
-	if (posOut < getMinPos(_dim))
-		posOut = getMinPos(_dim);
+	if (posOut < get_minPos(_dim))
+		posOut = get_minPos(_dim);
 
-	if (posOut > getMaxPos(_dim))
-		posOut = getMaxPos(_dim);
+	if (posOut > get_maxPos(_dim))
+		posOut = get_maxPos(_dim);
 
 	return posOut;
 }

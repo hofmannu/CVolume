@@ -58,43 +58,44 @@ public:
 	void multiply(const float factor); // multiplies all elements in volume with factor
 
 	// dimensionality of the dataset	
-	void setDim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2);
-	void setDim(const uint64_t* _dim);
-	void setDim(const uint8_t _dim, const uint64_t newDim);
-	uint64_t getDim(const uint8_t _dim) const; // returns dimension along axis
+	void set_dim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2);
+	void set_dim(const uint64_t* _dim);
+	void set_dim(const uint8_t _dim, const uint64_t newDim);
+	uint64_t get_dim(const uint8_t _dim) const; // returns dimension along axis
 
 	// define resolution of the dataset
-	void setRes(const float* dx);
-	void setRes(const float dx0, const float dx1, const float dx2);
-	void setRes(const uint8_t _dim, const float _res);
+	void set_res(const float* dx);
+	void set_res(const float dx0, const float dx1, const float dx2);
+	void set_res(const uint8_t _dim, const float _res);
 
 	// get resolution functions
-	float getRes(const uint8_t _dim) const {return res[_dim];};
-	float getRes0() const {return res[0];}; // get resolution along first dimension
-	float getRes1() const {return res[1];}; // get resolution along second dimension
-	float getRes2() const {return res[2];}; // get resolution along third dimension
+	float get_res(const uint8_t _dim) const {return res[_dim];};
+	float get_res0() const {return res[0];}; // get resolution along first dimension
+	float get_res1() const {return res[1];}; // get resolution along second dimension
+	float get_res2() const {return res[2];}; // get resolution along third dimension
 
 	// define origin of the dataset
-	void setOrigin(const float* _origin);
-	void setOrigin(const uint8_t _dim, const float _origin);
-	void setOrigin(const float origin0, const float origin1, const float origin2);
-	float getOrigin(const uint8_t _dim);
+	void set_origin(const float* _origin);
+	void set_origin(const uint8_t _dim, const float _origin);
+	void set_origin(const float origin0, const float origin1, const float origin2);
+	float get_origin(const uint8_t _dim);
 
 	// different ways to define matrix elements
-	void setValue(const float value); // set whole array to certain value
-	void setValue(const unsigned int x0, const unsigned int x1, const unsigned int x2, const float value);
-	void setValue(const uint64_t* pos, const float value);
+	void set_value(const float value); // set whole array to certain value
+	void set_value(const uint64_t x0, const uint64_t x1, const uint64_t x2, const float value);
+	void set_value(const uint64_t* pos, const float value);
+	void set_value(const uint64_t iElem, const float value);
 
 	// return the value of a certain position
-	float getValue(const unsigned int x0, const unsigned int x1, const unsigned int x2) const;
-	float getValue(const unsigned int iElem) const;
-	float getValue(const unsigned int* pos) const;
+	float get_value(const uint64_t x0, const uint64_t x1, const uint64_t x2) const;
+	float get_value(const uint64_t iElem) const;
+	float get_value(const uint64_t* pos) const;
 
 	// get position along axis
-	float getPos0(const uint64_t idx0) const;
-	float getPos1(const uint64_t idx1) const;
-	float getPos2(const uint64_t idx2) const;
-	float getPos(const uint64_t idx, const uint8_t iDim) const;
+	float get_pos0(const uint64_t idx0) const;
+	float get_pos1(const uint64_t idx1) const;
+	float get_pos2(const uint64_t idx2) const;
+	float get_pos(const uint64_t idx, const uint8_t iDim) const;
 
 	float getCenterPos(const uint8_t _dim); // returns center position along dimension
 
@@ -104,20 +105,20 @@ public:
 	uint64_t getIdx2(const float pos2) const;
 	uint64_t getIdx(const float pos, const uint8_t iDim) const;
 
-	float getLength(const uint8_t _dim); 
+	float get_length(const uint8_t _dim); 
 	// returns length of dataset along a certain dimension
 
 	uint64_t get_nElements() const;
-	void allocMemory();
+	void alloc_memory();
 
 	void readFromFile(const string filePath); // read from h5 file
 	void saveToFile(const string filePath) const;
 
 	void printInformation() const; 
 
-	float getMinPos(const unsigned int _dim) const;
-	float getMaxPos(const unsigned int _dim) const;
-	float getRangeLimitedPos(const float pos, const unsigned int _dim) const;
+	float get_minPos(const uint8_t _dim) const;
+	float get_maxPos(const uint8_t _dim) const;
+	float getRangeLimitedPos(const float pos, const uint8_t _dim) const;
 
 	void getCroppedVolume(
 		float* vol, // array containing cropped volume
