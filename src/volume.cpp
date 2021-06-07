@@ -15,6 +15,9 @@ volume::~volume()
 		delete[] sliceZ;
 		delete[] sliceX;
 		delete[] sliceY;
+		delete[] mipZ;
+		delete[] mipX;
+		delete[] mipY;
 	}
 }
 
@@ -117,6 +120,12 @@ void volume::alloc_memory()
 		delete[] sliceX;
 		delete[] sliceY;
 		delete[] sliceZ;
+		delete[] mipX;
+		delete[] mipY;
+		delete[] mipZ;
+		delete[] croppedMipX;
+		delete[] croppedMipY;
+		delete[] croppedMipZ;
 	}
 
 	isMemAlloc = 1; // set flag for memory allocation
@@ -129,6 +138,16 @@ void volume::alloc_memory()
 	sliceZ = new float [dim[1] * dim[2]]; 
 	sliceX = new float [dim[0] * dim[2]];
 	sliceY = new float [dim[0] * dim[1]];
+
+	// allocate memory for mips
+	mipZ = new float [dim[1] * dim[2]];
+	mipX = new float [dim[0] * dim[2]];
+	mipY = new float [dim[0] * dim[1]];
+
+	// allocate memory for cropped mips
+	croppedMipZ = new float [dim[1] * dim[2]];
+	croppedMipX = new float [dim[0] * dim[2]];
+	croppedMipY = new float [dim[0] * dim[1]];
 	return;
 }
 
@@ -402,13 +421,22 @@ void volume::readFromFile(const string filePath)
 	dimDataset.read(dim, H5::PredType::NATIVE_UINT64, mspaceDim, filespace);
 	nElements = dim[0] * dim[1] * dim[2];
 
+	printf("Volumetric dataset properties: \n");
+	printf(" - origin:        %.2e, %.2e, %.2e \n", origin[0], origin[1], origin[2]);
+	printf(" - resolution:    %.2e, %.2e, %.2e \n", res[0], res[1], res[2]);
+	printf(" - dimensions:    %d, %d, %d \n", dim[0], dim[1], dim[2]);
+	
 	// read actual datamatrix
 	// printf("Loading data from file...\n");
 	H5::DataSet dataDataset = file.openDataSet("vol"); // read actual dataset
 	const hsize_t col_dims_data = nElements; 
 	H5::DataSpace mspaceData (1, &col_dims_data);	
 	filespace = dataDataset.getSpace();
+	
+	printf("allocating memory...\n");
 	alloc_memory();
+
+	printf("reading into memory...\n");
 	dataDataset.read(data, H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
 
 	isMemAlloc = 1;
@@ -606,4 +634,225 @@ void volume::set_pdata(float* _data)
 {
 	data = _data;
 	return;
+}
+
+void volume::calcMips()
+{
+	// set all elements of z mip to 0
+	for (uint64_t iX = 0; iX < dim[1]; iX++)
+	{
+		for (uint64_t iY = 0; iY < dim[2]; iY++)
+		{
+			mipZ[iX + iY * dim[1]] = 0;
+		}
+	}
+
+	// set all elements of x mip to 0
+	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
+	{
+		for (uint64_t iY = 0; iY < dim[2]; iY++)
+		{
+			mipX[iZ + iY * dim[0]] = 0;
+		}
+	}
+
+	// set all elements of y mip to 0
+	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
+	{
+		for (uint64_t iX = 0; iX < dim[1]; iX++)
+		{
+			mipY[iZ + dim[0] * iX] = 0;
+		}
+	}
+
+	// go through all elements and check the maximum value
+	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
+	{
+		for (uint64_t iX = 0; iX < dim[1]; iX++)
+		{
+			for (uint64_t iY = 0; iY < dim[2]; iY++)
+			{
+				const float currVal = abs(data[iZ + dim[0] * (iX + dim[1] * iY)]);
+				// update z mip
+				if (currVal > mipZ[iX + iY * dim[1]])
+				{
+					mipZ[iX + iY * dim[1]] = currVal;
+				}
+
+				// update x mip
+				if (currVal > mipX[iZ + iY * dim[0]])
+				{
+					mipX[iZ + iY * dim[0]] =  currVal;
+				}
+
+				// update y mip
+				if (currVal > mipY[iX + dim[1] * iZ])
+				{
+					mipY[iX + dim[1] * iZ] = currVal;
+				}
+			}
+		}
+	}
+
+	return;
+}
+
+// update the cropping range
+void volume::calcCroppedMips(const float* _cropRange)
+{
+	for (uint8_t idx = 0; idx < 6; idx++)
+	{
+			cropRange[idx] = _cropRange[idx];
+	}
+	calcCroppedMips();
+
+	return;
+}
+
+void volume::calcCroppedMips()
+{
+
+	// set all elements of z mip to 0
+	for (uint64_t iX = 0; iX < dim[1]; iX++)
+	{
+		for (uint64_t iY = 0; iY < dim[2]; iY++)
+		{
+			croppedMipZ[iX + iY * dim[1]] = 0;
+		}
+	}
+
+	// set all elements of x mip to 0
+	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
+	{
+		for (uint64_t iY = 0; iY < dim[2]; iY++)
+		{
+			croppedMipX[iZ + iY * dim[0]] = 0;
+		}
+		for (uint64_t iX = 0; iX < dim[1]; iX++)
+		{
+			croppedMipY[iZ + dim[0] * iX] = 0;
+		}
+	}
+
+	uint64_t idxCropRange[6];
+	idxCropRange[0] = getIdx0(cropRange[0]);
+	idxCropRange[1] = getIdx0(cropRange[1]);
+	idxCropRange[2] = getIdx1(cropRange[2]);
+	idxCropRange[3] = getIdx1(cropRange[3]);
+	idxCropRange[4] = getIdx2(cropRange[4]);
+	idxCropRange[5] = getIdx2(cropRange[5]);
+
+	// set min and max val of cropping to the very first element
+	uint64_t startIdx = idxCropRange[0] + dim[0] * (idxCropRange[2] + 
+		dim[1] * idxCropRange[4]);
+	minValCrop = data[startIdx];
+	maxValCrop = data[startIdx];
+
+	// go through all elements and check the maximum value
+	for (uint64_t iZ = idxCropRange[0]; iZ < idxCropRange[1]; iZ++)
+	{
+		for (uint64_t iX = idxCropRange[2]; iX < idxCropRange[3]; iX++)
+		{
+			for (uint64_t iY = idxCropRange[4]; iY < idxCropRange[5]; iY++)
+			{
+
+				const float currVal = abs(data[iZ + dim[0] * (iX + dim[1] * iY)]);
+				// update z mip
+				if (currVal > mipZ[iX + iY * dim[1]])
+				{
+					croppedMipZ[iX + iY * dim[1]] = currVal;
+				}
+
+				// update x mip
+				if (currVal > mipX[iZ + iY * dim[0]])
+				{
+					croppedMipX[iZ + iY * dim[0]] =  currVal;
+				}
+
+				// update y mip
+				if (currVal > mipY[iX + dim[1] * iZ])
+				{
+					croppedMipY[iX + dim[1] * iZ] = currVal;
+				}
+
+				if (currVal > maxValCrop)
+					maxValCrop = currVal;
+
+				if (currVal < minValCrop)
+					minValCrop = currVal;
+			}
+		}
+	}
+
+	return;
+}
+
+float* volume::get_croppedMipX()
+{
+	return croppedMipX;
+}
+
+float* volume::get_croppedMipX(const float* _cropX)
+{
+	bool flagChanged = 0;
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (_cropX[iElem] != cropRange[iElem + 2])
+		{
+			flagChanged = 1;
+			cropRange[iElem + 2] = _cropX[iElem];
+		}
+	}
+
+	if (flagChanged)
+		calcCroppedMips();
+
+	return croppedMipX;
+}
+
+float* volume::get_croppedMipZ(const float* _cropZ)
+{
+	bool flagChanged = 0;
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (_cropZ[iElem] != cropRange[iElem + 2])
+		{
+			flagChanged = 1;
+			cropRange[iElem ] = _cropZ[iElem];
+		}
+	}
+
+	if (flagChanged)
+		calcCroppedMips();
+
+	return croppedMipZ;
+}
+
+float* volume::get_croppedMipY(const float* _cropY)
+{
+	bool flagChanged = 0;
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (_cropY[iElem] != cropRange[iElem + 4])
+		{
+			flagChanged = 1;
+			cropRange[iElem + 4] = (float) _cropY[iElem];
+		}
+	}
+
+	if (flagChanged)
+		calcCroppedMips();
+
+	return croppedMipY;
+}
+
+float* volume::get_croppedMipY()
+{
+	return croppedMipY;
+}
+
+float* volume::get_croppedMipZ()
+{
+
+	return croppedMipZ;
 }

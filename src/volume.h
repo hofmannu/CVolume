@@ -28,22 +28,37 @@ class volume : public baseClass, public basicMathOp
 {
 private:
 	bool isMemAlloc = 0; // did we allocate memory
-	uint64_t dim[3]; // dimensionailty of volume
-	uint64_t nElements; // overall number of elements in 
-	float origin[3]; // origin of volume
-	float res[3]; // resolution of volume
+	uint64_t dim[3] = {0, 0, 0}; // dimensionailty of volume
+	uint64_t nElements = 0; // overall number of elements in 
+	float origin[3] = {0, 0, 0}; // origin of volume
+	float res[3] = {1, 1, 1}; // resolution of volume
 	float* data; // matrix containing data
-	float minVal;
-	float maxVal;
-	float maxAbsVal;
+	float minVal = 0; // minimum value in full dataset
+	float maxVal = 0; // maximum value in full dataset
+	float maxAbsVal = 0;
 
 	// z slice array which will be only updated if new slice is requested
-	float* sliceZ;
+	float* sliceZ; // indexing [iX, iY]
 	uint64_t lastSliceZ = 0;
-	float* sliceX;
+	float* sliceX; // indexing [iZ, iY]
 	uint64_t lastSliceX = 0;
-	float* sliceY;
+	float* sliceY; // indexing [iX, iZ]
 	uint64_t lastSliceY = 0;
+
+	// maximum intensity projections
+	float* mipZ; // indexing: [iX, iY], iX + nX * iY
+	float* mipX; // indexing: [iZ, iY], iZ + nZ * iY
+	float* mipY; // indexing: [iX, iZ], iX + nX * iZ
+
+	// maximum intensity projections (cropped)
+	float* croppedMipZ; // indexing: [iX, iY], iX + nX * iY
+	float* croppedMipX; // indexing: [iZ, iY], iZ + nZ * iY
+	float* croppedMipY; // indexing: [iX, iZ], iX + nX * iZ
+
+	float cropRange[6] = {0, 0, 0, 0, 0, 0}; // crop range for submips
+	float minValCrop = 0;
+	float maxValCrop = 0;
+	// order: [zStart, zEnd, xStart, xEnd, yStart, yEnd]
 
 public:
 	volume(); // class constructor
@@ -134,8 +149,23 @@ public:
 	void exportVtk(const string filePath);
 
 	void calcMinMax();
+	void calcMips();
+
+	// everything related to cropped mips
+	void calcCroppedMips();
+	void calcCroppedMips(const float* cropRange);
+	float* get_croppedMipZ();
+	float* get_croppedMipZ(const float* _cropZ);
+	float* get_croppedMipX();
+	float* get_croppedMipX(const float* _cropX);
+	float* get_croppedMipY();
+	float* get_croppedMipY(const float* _cropY);
+
+	// get min and max value of full volume
 	float getMinVal() const {return minVal;};
 	float getMaxVal() const {return maxVal;};
+	float get_minValCrop() const {return minValCrop;};
+	float get_maxValCrop() const {return maxValCrop;};
 
 	float* get_pdata() {return data;};
 	void set_pdata(float* _data);
@@ -147,6 +177,10 @@ public:
 	float* get_psliceZ(const float zPos);
 	float* get_psliceX(const float xPos);
 	float* get_psliceY(const float yPos);
+
+	float* get_mipX() {return mipX;};
+	float* get_mipY() {return mipY;};
+	float* get_mipZ() {return mipZ;};
 };
 
 #endif
