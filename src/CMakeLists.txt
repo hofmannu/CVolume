@@ -4,12 +4,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_library(H5CPP_LIB hdf5_cpp)
 find_library(H5_LIB hdf5)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(Volume volume.cpp)
 target_link_libraries(Volume PUBLIC
 	BaseClass
 	BasicMathOp
 	VtkWriter
 	GriddedData
+	Threads::Threads
 	"${H5CPP_LIB}" "${H5_LIB}"
 )
 

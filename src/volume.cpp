@@ -3,6 +3,8 @@
 volume::volume()
 {
 	className = "volume";
+	processor_count = std::thread::hardware_concurrency();
+	printf("[volume] Found %d processor units... \n", processor_count);
 }
 
 volume::~volume()
@@ -636,34 +638,23 @@ void volume::set_pdata(float* _data)
 	return;
 }
 
+// calculates the maximum intensity projections over the full volume
 void volume::calcMips()
 {
 	// set all elements of z mip to 0
 	for (uint64_t iX = 0; iX < dim[1]; iX++)
-	{
 		for (uint64_t iY = 0; iY < dim[2]; iY++)
-		{
 			mipZ[iX + iY * dim[1]] = 0;
-		}
-	}
 
 	// set all elements of x mip to 0
 	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
-	{
 		for (uint64_t iY = 0; iY < dim[2]; iY++)
-		{
 			mipX[iZ + iY * dim[0]] = 0;
-		}
-	}
 
 	// set all elements of y mip to 0
 	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
-	{
 		for (uint64_t iX = 0; iX < dim[1]; iX++)
-		{
 			mipY[iZ + dim[0] * iX] = 0;
-		}
-	}
 
 	// go through all elements and check the maximum value
 	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
@@ -709,80 +700,198 @@ void volume::calcCroppedMips(const float* _cropRange)
 	return;
 }
 
-void volume::calcCroppedMips()
+struct thread_data
 {
+	uint64_t thread_id;
+	uint64_t startY;
+	uint64_t stopY;
+	uint64_t cropX[2];
+	uint64_t cropZ[2];
+	float* ptrMipX;
+	float* ptrMipY;
+	float* ptrMipZ;
+	uint64_t dim[3];
+	float* data;
+};
 
-	// set all elements of z mip to 0
-	for (uint64_t iX = 0; iX < dim[1]; iX++)
+void *CalcSubMips(void *threadarg) 
+{
+   struct thread_data *my_data;
+   my_data = (struct thread_data *) threadarg;
+
+  // go through all elements and check the maximum value
+	# pragma unroll
+	for (uint64_t iY = my_data->startY; iY <= my_data->stopY; iY++)
 	{
-		for (uint64_t iY = 0; iY < dim[2]; iY++)
+		#pragma unroll
+		for (uint64_t iX = my_data->cropX[0]; iX < my_data->cropX[1]; iX++)
 		{
-			croppedMipZ[iX + iY * dim[1]] = 0;
-		}
-	}
-
-	// set all elements of x mip to 0
-	for (uint64_t iZ = 0; iZ < dim[0]; iZ++)
-	{
-		for (uint64_t iY = 0; iY < dim[2]; iY++)
-		{
-			croppedMipX[iZ + iY * dim[0]] = 0;
-		}
-		for (uint64_t iX = 0; iX < dim[1]; iX++)
-		{
-			croppedMipY[iZ + dim[0] * iX] = 0;
-		}
-	}
-
-	uint64_t idxCropRange[6];
-	idxCropRange[0] = getIdx0(cropRange[0]);
-	idxCropRange[1] = getIdx0(cropRange[1]);
-	idxCropRange[2] = getIdx1(cropRange[2]);
-	idxCropRange[3] = getIdx1(cropRange[3]);
-	idxCropRange[4] = getIdx2(cropRange[4]);
-	idxCropRange[5] = getIdx2(cropRange[5]);
-
-	// set min and max val of cropping to the very first element
-	uint64_t startIdx = idxCropRange[0] + dim[0] * (idxCropRange[2] + 
-		dim[1] * idxCropRange[4]);
-	minValCrop = data[startIdx];
-	maxValCrop = data[startIdx];
-
-	// go through all elements and check the maximum value
-	for (uint64_t iZ = idxCropRange[0]; iZ < idxCropRange[1]; iZ++)
-	{
-		for (uint64_t iX = idxCropRange[2]; iX < idxCropRange[3]; iX++)
-		{
-			for (uint64_t iY = idxCropRange[4]; iY < idxCropRange[5]; iY++)
+			# pragma unroll
+			for (uint64_t iZ = my_data->cropZ[0]; iZ < my_data->cropZ[1]; iZ++)
 			{
+				
+				const uint64_t currIdx = iZ + my_data->dim[0] * (iX + my_data->dim[1] * iY);
+				const float currVal = abs(my_data->data[currIdx]);
 
-				const float currVal = abs(data[iZ + dim[0] * (iX + dim[1] * iY)]);
 				// update z mip
-				if (currVal > mipZ[iX + iY * dim[1]])
-				{
-					croppedMipZ[iX + iY * dim[1]] = currVal;
-				}
+				const uint64_t idxZ = iX + iY * my_data->dim[1];
+				if (currVal > my_data->ptrMipZ[idxZ])
+					my_data->ptrMipZ[idxZ] = currVal;
 
 				// update x mip
-				if (currVal > mipX[iZ + iY * dim[0]])
-				{
-					croppedMipX[iZ + iY * dim[0]] =  currVal;
-				}
+				const uint64_t idxX = iZ + iY * my_data->dim[0];
+				if (currVal > my_data->ptrMipX[idxX])
+					my_data->ptrMipX[idxX] = currVal;
 
 				// update y mip
-				if (currVal > mipY[iX + dim[1] * iZ])
-				{
-					croppedMipY[iX + dim[1] * iZ] = currVal;
-				}
-
-				if (currVal > maxValCrop)
-					maxValCrop = currVal;
-
-				if (currVal < minValCrop)
-					minValCrop = currVal;
+				const uint64_t idxY = iX + my_data->dim[1] * iZ;
+				if (currVal > my_data->ptrMipY[idxY])
+					my_data->ptrMipY[idxY] = currVal;	
 			}
 		}
 	}
+   pthread_exit(NULL);
+}
+
+// calculates the maximum intensity projections over a cropped range
+void volume::calcCroppedMips()
+{
+	clock_t tStart = clock();
+	// set all elements of mips to 0
+	for (uint64_t iElem = 0; iElem < (dim[1] * dim[2]); iElem++)
+		croppedMipZ[iElem] = 0;
+
+	for (uint64_t iElem = 0; iElem < (dim[0] * dim[2]); iElem++)
+		croppedMipX[iElem] = 0;
+
+	for (uint64_t iElem = 0; iElem < (dim[0] * dim[1]); iElem++)
+		croppedMipY[iElem] = 0;
+
+	const uint64_t idxCropRange[6] = {
+		getIdx0(cropRange[0]),
+		getIdx0(cropRange[1]),
+		getIdx1(cropRange[2]),
+		getIdx1(cropRange[3]),
+		getIdx2(cropRange[4]),
+		getIdx2(cropRange[5])
+	};
+
+	const uint64_t deltaZ = idxCropRange[1] - idxCropRange[0] + 1; // total number of zs
+	const uint64_t deltaX = idxCropRange[3] - idxCropRange[2] + 1; // total number of zs
+	const uint64_t deltaY = idxCropRange[5] - idxCropRange[4] + 1; // total number of zs
+	
+	printf("Cropping range: %d ... %d, %d ... %d, %d ... %d\n",
+		idxCropRange[0], idxCropRange[1],
+		idxCropRange[2], idxCropRange[3],
+		idxCropRange[4], idxCropRange[5]);
+
+	pthread_t threads[processor_count];
+	pthread_attr_t attr;
+	void *status;
+
+	// Initialize and set thread joinable
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+
+	struct thread_data td[processor_count];
+	float* mipYTemp[processor_count];
+
+	const uint64_t nProcessorY = ceil((float) deltaY / ((float) processor_count));
+	for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+	{
+		td[iProcessor].thread_id = iProcessor;
+		td[iProcessor].startY = iProcessor * nProcessorY;
+		const uint64_t stopY = (iProcessor + 1) * nProcessorY - 1;
+		td[iProcessor].stopY = (stopY >= deltaY) ? (deltaY - 1) : stopY;
+		
+		// include offset for ys
+		td[iProcessor].startY += idxCropRange[4];
+		td[iProcessor].stopY += idxCropRange[4];
+
+		mipYTemp[iProcessor] = new float [dim[0] * dim[1]];
+		for (uint64_t iElem = 0; iElem < (dim[0] * dim[1]); iElem++)
+			mipYTemp[iProcessor][iElem] = 0;
+		td[iProcessor].ptrMipX = croppedMipX;
+		td[iProcessor].ptrMipY = mipYTemp[iProcessor];
+		td[iProcessor].ptrMipZ = croppedMipZ;
+
+		for (uint8_t iDim = 0; iDim < 3; iDim++)
+			td[iProcessor].dim[iDim] = dim[iDim];
+
+		td[iProcessor].cropZ[0] = idxCropRange[0];
+		td[iProcessor].cropZ[1] = idxCropRange[1];
+		td[iProcessor].cropX[0] = idxCropRange[2];
+		td[iProcessor].cropX[1] = idxCropRange[3];
+
+		td[iProcessor].data = data;
+
+		// printf("worker %d runs from %d to %d\n", iProcessor, td[iProcessor].startY, td[iProcessor].stopY);
+
+		int rc = pthread_create(&threads[iProcessor], &attr, CalcSubMips, (void *)&td[iProcessor]);
+		if (rc) {
+	  	cout << "Error:unable to create thread," << rc << endl;
+	    exit(-1);
+	  }
+	} 
+
+	// wait for ecxecution
+	pthread_attr_destroy(&attr);
+  for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++ ) {
+      int 	rc = pthread_join(threads[iProcessor], &status);
+      if (rc) {
+         cout << "Error: unable to join," << rc << endl;
+         exit(-1);
+      }
+      // cout << "Main: completed thread id :" << iProcessor ;
+      // cout << "  exiting with status :" << status << endl;
+   }
+
+	// fuse y mips
+  for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+  {
+  	for (uint64_t idxLin = 0; idxLin < dim[0] * dim[1]; idxLin++)
+  	{
+  		if (mipYTemp[iProcessor][idxLin] > croppedMipY[idxLin])
+  			croppedMipY[idxLin] = mipYTemp[iProcessor][idxLin];
+  	}
+  }
+
+	// delete y mips
+	for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+		delete[] mipYTemp[iProcessor];
+		
+	// set min and max val of cropping to the very first element
+	const uint64_t startIdx = idxCropRange[0] + dim[0] * (idxCropRange[2] + 
+		dim[1] * idxCropRange[4]);
+	maxValCrop = abs(data[startIdx]);
+	minValCrop = abs(data[startIdx]);
+
+	// for maximum value it is sufficient to compare against one mip
+	for (uint64_t iElem = 0; iElem < (dim[1] * dim[2]); iElem++)
+	{
+		if (croppedMipZ[iElem] > maxValCrop)
+			maxValCrop = croppedMipZ[iElem];
+
+		if (croppedMipZ[iElem] < minValCrop)
+			minValCrop = croppedMipZ[iElem];
+	}
+
+	// for minimum value we also need to compare against the two other
+	for (uint64_t iElem = 0; iElem < (dim[0] * dim[2]); iElem++)
+	{
+		if (croppedMipX[iElem] < minValCrop)
+			minValCrop = croppedMipX[iElem];
+	}
+
+	for (uint64_t iElem = 0; iElem < (dim[0] * dim[1]); iElem++)
+	{
+		if (croppedMipY[iElem] < minValCrop)
+			minValCrop = croppedMipY[iElem];
+	}
+
+	updatedCropRange = 0;
+	printf("Time taken: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 
 	return;
 }
@@ -790,6 +899,17 @@ void volume::calcCroppedMips()
 float* volume::get_croppedMipX()
 {
 	return croppedMipX;
+}
+
+float* volume::get_croppedMipY()
+{
+	return croppedMipY;
+}
+
+float* volume::get_croppedMipZ()
+{
+
+	return croppedMipZ;
 }
 
 float* volume::get_croppedMipX(const float* _cropX)
@@ -804,6 +924,7 @@ float* volume::get_croppedMipX(const float* _cropX)
 		}
 	}
 
+	// if any cropping range is actually new here, lets update the mips
 	if (flagChanged)
 		calcCroppedMips();
 
@@ -815,10 +936,10 @@ float* volume::get_croppedMipZ(const float* _cropZ)
 	bool flagChanged = 0;
 	for (uint8_t iElem = 0; iElem < 2; iElem++)
 	{
-		if (_cropZ[iElem] != cropRange[iElem + 2])
+		if (_cropZ[iElem] != cropRange[iElem])
 		{
 			flagChanged = 1;
-			cropRange[iElem ] = _cropZ[iElem];
+			cropRange[iElem] = _cropZ[iElem];
 		}
 	}
 
@@ -846,13 +967,44 @@ float* volume::get_croppedMipY(const float* _cropY)
 	return croppedMipY;
 }
 
-float* volume::get_croppedMipY()
+// define the cropping range along x
+void volume::set_cropRangeX(const float* _cropX)
 {
-	return croppedMipY;
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (cropRange[iElem + 2] != _cropX[iElem])
+		{
+			cropRange[iElem + 2] = _cropX[iElem];
+			updatedCropRange = 1;
+		}
+	}
+	return;
 }
 
-float* volume::get_croppedMipZ()
+// define the cropping range along z
+void volume::set_cropRangeZ(const float* _cropZ)
 {
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (cropRange[iElem] != _cropZ[iElem])
+		{
+			cropRange[iElem] = _cropZ[iElem];
+			updatedCropRange = 1;
+		}
+	}
+	return;
+}
 
-	return croppedMipZ;
+// define the cropping range along y
+void volume::set_cropRangeY(const float* _cropY)
+{
+	for (uint8_t iElem = 0; iElem < 2; iElem++)
+	{
+		if (cropRange[iElem + 4] != _cropY[iElem])
+		{
+			cropRange[iElem + 4] = _cropY[iElem];
+			updatedCropRange = 1;
+		}
+	}
+	return;
 }

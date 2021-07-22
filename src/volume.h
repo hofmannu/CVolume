@@ -16,6 +16,9 @@
 #define VOLUME_H
 
 #include <string>
+#include <time.h>
+#include <thread>
+#include <pthread.h>
 #include "baseClass.h"
 #include <H5Cpp.h>
 #include "basicMathOp.h"
@@ -56,9 +59,13 @@ private:
 	float* croppedMipY; // indexing: [iX, iZ], iX + nX * iZ
 
 	float cropRange[6] = {0, 0, 0, 0, 0, 0}; // crop range for submips
+	bool updatedCropRange = 0; // indicator if the cropped boundaries were updated
+	// order: zMin, zMax, xMin, xMax, yMin, yMax
 	float minValCrop = 0;
 	float maxValCrop = 0;
-	// order: [zStart, zEnd, xStart, xEnd, yStart, yEnd]
+
+	// multiprocessor stuff
+	int processor_count = 1;
 
 public:
 	volume(); // class constructor
@@ -160,6 +167,10 @@ public:
 	float* get_croppedMipX(const float* _cropX);
 	float* get_croppedMipY();
 	float* get_croppedMipY(const float* _cropY);
+	void set_cropRangeX(const float* _cropX);
+	void set_cropRangeY(const float* _cropY);
+	void set_cropRangeZ(const float* _cropZ);
+	bool get_updatedCropRange() const {return updatedCropRange;};
 
 	// get min and max value of full volume
 	float getMinVal() const {return minVal;};
