@@ -30,15 +30,19 @@ using namespace std;
 class volume : public baseClass, public basicMathOp
 {
 private:
-	bool isMemAlloc = 0; // did we allocate memory
+	string filePath;
+
 	uint64_t dim[3] = {0, 0, 0}; // dimensionailty of volume
 	uint64_t nElements = 0; // overall number of elements in 
 	float origin[3] = {0, 0, 0}; // origin of volume
 	float res[3] = {1, 1, 1}; // resolution of volume
-	float* data; // matrix containing data
+
 	float minVal = 0; // minimum value in full dataset
 	float maxVal = 0; // maximum value in full dataset
 	float maxAbsVal = 0;
+
+	float* data; // matrix containing data
+	bool isMemAlloc = 0; // did we allocate memory
 
 	// z slice array which will be only updated if new slice is requested
 	float* sliceZ; // indexing [iX, iY]
@@ -68,8 +72,30 @@ private:
 	int processor_count = 1;
 
 public:
+	// class constructor and destructor
 	volume(); // class constructor
+	volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2);
 	~volume(); // class destructor
+
+	// assignment operator
+	volume& operator = (const float setVal); // set entire volume to a value
+	volume& operator = (const volume& volumeB);
+
+	// multiplication operator
+	volume& operator *= (const float multVal);
+	volume operator * (const float multVal);
+
+	// division operator
+	volume operator /(const float divVal);
+
+	// addition operator
+	volume& operator += (const volume& volumeB);
+
+	// substraction operator
+	volume& operator -= (const volume& volumeB);
+	volume operator -(const volume& volumeB);
+
+	float operator[] (const std::size_t idx) const;
 
 	// important properties
 	float get_minVal() const {return minVal;};
@@ -119,13 +145,13 @@ public:
 	float get_pos2(const uint64_t idx2) const;
 	float get_pos(const uint64_t idx, const uint8_t iDim) const;
 
-	float getCenterPos(const uint8_t _dim); // returns center position along dimension
+	float get_centerPos(const uint8_t _dim); // returns center position along dimension
 
 	// get index of a certain position
-	uint64_t getIdx0(const float pos0) const;
-	uint64_t getIdx1(const float pos1) const;
-	uint64_t getIdx2(const float pos2) const;
-	uint64_t getIdx(const float pos, const uint8_t iDim) const;
+	uint64_t get_idx0(const float pos0) const;
+	uint64_t get_idx1(const float pos1) const;
+	uint64_t get_idx2(const float pos2) const;
+	uint64_t get_idx(const float pos, const uint8_t iDim) const;
 
 	float get_length(const uint8_t _dim); 
 	// returns length of dataset along a certain dimension
@@ -133,12 +159,13 @@ public:
 	uint64_t get_nElements() const;
 	void alloc_memory();
 
-	void readFromFile(const string filePath); // read from h5 file
+	void readFromFile(); // read from file with existing path variable
+	void readFromFile(const string _filePath); // read from h5 file
 	void saveToFile(const string filePath) const;
 
-	void printInformation() const; 
+	void print_information() const; 
 
-	float get_minPos(const uint8_t _dim) const;
+	float get_minPos(const uint8_t _dim) const; // returns minimum position along dimension
 	float get_maxPos(const uint8_t _dim) const;
 	float getRangeLimitedPos(const float pos, const uint8_t _dim) const;
 
@@ -148,7 +175,7 @@ public:
 		const uint64_t start1, const uint64_t stop1,
 		const uint64_t start2, const uint64_t stop2) const;
 
-	void getCroppedVolume(
+	void get_croppedVolume(
 		float* vol, // array containing cropped volume 
 		const uint64_t* startIdx, 
 		const uint64_t* stopIdx) const;
@@ -172,11 +199,12 @@ public:
 	void set_cropRangeZ(const float* _cropZ);
 	bool get_updatedCropRange() const {return updatedCropRange;};
 
-	// get min and max value of full volume
-	float getMinVal() const {return minVal;};
-	float getMaxVal() const {return maxVal;};
+
 	float get_minValCrop() const {return minValCrop;};
 	float get_maxValCrop() const {return maxValCrop;};
+
+	string get_filePath() const {return filePath;};
+	void set_filePath(const string _filePath);
 
 	float* get_pdata() {return data;};
 	void set_pdata(float* _data);
@@ -192,6 +220,10 @@ public:
 	float* get_mipX() {return mipX;};
 	float* get_mipY() {return mipY;};
 	float* get_mipZ() {return mipZ;};
+
+	void normalize();
+	float get_norm() const;
+	void rand(const float maxVal);
 };
 
 #endif

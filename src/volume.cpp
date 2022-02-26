@@ -4,7 +4,13 @@ volume::volume()
 {
 	className = "volume";
 	processor_count = std::thread::hardware_concurrency();
-	printf("[volume] Found %d processor units... \n", processor_count);
+}
+
+volume::volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2)
+{
+	set_dim(_dim0, _dim1, _dim2);
+	alloc_memory();
+	volume();
 }
 
 volume::~volume()
@@ -21,6 +27,99 @@ volume::~volume()
 		delete[] mipX;
 		delete[] mipY;
 	}
+}
+
+
+// operators
+volume& volume::operator = (const float setVal)
+{
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] = setVal;
+	}
+	return *this;
+}
+
+volume& volume::operator = (const volume& volumeB)
+{
+	if (nElements != volumeB.get_nElements())
+	{
+		printf("To use assignment operator, both values must have the same number of elements\n");
+		throw "InvalidSize";
+	}
+
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] =	volumeB[iElem];
+	}
+	return *this;
+}
+
+// multiplication operator
+volume& volume::operator *= (const float multVal)
+{
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] =	this->data[iElem] * multVal;
+	}
+	return *this;
+}
+
+volume volume::operator *(const float multVal)
+{
+	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
+	for (unsigned int idx = 0; idx < this->nElements; idx++)
+		retVol.set_value(idx, this->data[idx] * multVal);
+	return retVol;
+}
+
+// division operator
+
+volume volume::operator /(const float divVal)
+{
+	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
+	for (unsigned int idx = 0; idx < this->nElements; idx++)
+		retVol.set_value(idx, this->data[idx] / divVal);
+	return retVol;
+}
+
+// addition operator
+volume& volume::operator +=(const volume& volumeB)
+{
+	if (this->nElements != volumeB.get_nElements())
+	{
+		printf("Volumes must have the same number of elements for this\n");
+		throw "InvalidSize";
+	}
+
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] = this->data[iElem] + volumeB[iElem];
+	}
+
+	return *this;
+}
+
+// substraction operator
+volume& volume::operator -=(const volume& volumeB)
+{
+	if (this->nElements != volumeB.get_nElements())
+	{
+		printf("Volumes must have the same number of elements for this\n");
+		throw "InvalidSize";
+	}
+
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] = this->data[iElem] - volumeB[iElem];
+	}
+
+	return *this;
+}
+
+float volume::operator[] (const std::size_t idx) const
+{
+	return *(data + idx);
 }
 
 // get pointer to slice with z as normal
@@ -92,19 +191,19 @@ float* volume::get_psliceY(const uint64_t yLevel)
 // get slice of volume at position
 float* volume::get_psliceZ(const float zPos)
 {
-	uint64_t zIdx = getIdx(zPos, 0);
+	uint64_t zIdx = get_idx(zPos, 0);
 	return get_psliceZ(zIdx);
 }
 
 float* volume::get_psliceX(const float xPos)
 {
-	uint64_t xIdx = getIdx(xPos, 1);
+	uint64_t xIdx = get_idx(xPos, 1);
 	return get_psliceX(xIdx);
 }
 
 float* volume::get_psliceY(const float yPos)
 {
-	uint64_t yIdx = getIdx(yPos, 2);
+	uint64_t yIdx = get_idx(yPos, 2);
 	return get_psliceY(yIdx);
 }
 
@@ -318,18 +417,18 @@ float volume::get_pos(const uint64_t idx, const uint8_t iDim) const
 	return origin[iDim] + (float) idx * res[iDim];
 }
 
-float volume::getCenterPos(const uint8_t _dim)
+float volume::get_centerPos(const uint8_t _dim)
 {
 	const float centerPos = origin[_dim] + ((float) dim[_dim] * res[_dim]) / 2;
 	return centerPos;
 }
 
 // get index along a certain dimension
-uint64_t volume::getIdx0(const float pos0) const {return getIdx(pos0, 0);}
-uint64_t volume::getIdx1(const float pos1) const {return getIdx(pos1, 1);}
-uint64_t volume::getIdx2(const float pos2) const {return getIdx(pos2, 2);}
+uint64_t volume::get_idx0(const float pos0) const {return get_idx(pos0, 0);}
+uint64_t volume::get_idx1(const float pos1) const {return get_idx(pos1, 1);}
+uint64_t volume::get_idx2(const float pos2) const {return get_idx(pos2, 2);}
 
-uint64_t volume::getIdx(const float pos, const uint8_t iDim) const
+uint64_t volume::get_idx(const float pos, const uint8_t iDim) const
 {
 	if (pos < origin[iDim]){
 		printf("[volume] hitting lower boundary of volume along dim %d\n", iDim);
@@ -354,11 +453,9 @@ uint64_t volume::get_nElements() const
 // not implemented yet
 void volume::saveToFile(const string filePath) const
 {
-	vprintf("Saving data to file", 1);
 	H5::H5File file(filePath, H5F_ACC_TRUNC);
 
 	// write resolutiion to file
-	//printf("Write resolution to file...\n");
 	const hsize_t col_dims = 3;
 	H5::DataSpace mspaceRes(1, &col_dims);
 	H5::DataSet resDataset = file.createDataSet(
@@ -367,7 +464,6 @@ void volume::saveToFile(const string filePath) const
 	resDataset.close();
 
 	// write origin to file
-	//printf("Write origin to file...\n");
 	H5::DataSpace mspaceOrigin(1, &col_dims);
 	H5::DataSet originDataset = file.createDataSet(
 		"origin", H5::PredType::NATIVE_FLOAT, mspaceOrigin);
@@ -375,7 +471,6 @@ void volume::saveToFile(const string filePath) const
 	originDataset.close();
 
 	// write dimension to file
-	//printf("Write dimensions to file...\n");
 	H5::DataSpace mspaceDim(1, &col_dims);
 	H5::DataSet dimDataset = file.createDataSet(
 		"dim", H5::PredType::NATIVE_UINT, mspaceDim);
@@ -391,17 +486,22 @@ void volume::saveToFile(const string filePath) const
 	dataDataset.close();
 
 	file.close();
-	vprintf("done!\n", 0);
 	return;
 }
 
-void volume::readFromFile(const string filePath)
+void volume::readFromFile(const string _filePath)
 {
-	vprintf("Reading from file... ", 1);
+	filePath = _filePath;
+	readFromFile();
+	return;
+}
+
+void volume::readFromFile()
+{
+	// vprintf("Reading from file... ", 1);
 	H5::H5File file(filePath, H5F_ACC_RDONLY); // open dataset as read only
 
 	// load resolution from file
-	// printf("Loading resolution from file...\n");
 	H5::DataSet resDataset = file.openDataSet("dr"); // init dataset for res 
 	const hsize_t col_dims = 3;
 	H5::DataSpace mspaceRes (1, &col_dims); 
@@ -409,53 +509,48 @@ void volume::readFromFile(const string filePath)
 	resDataset.read(res, H5::PredType::NATIVE_FLOAT, mspaceRes, filespace); 	
 
 	// load origin from file
-	// printf("Loading origin from file...\n");
 	H5::DataSet originDataset = file.openDataSet("origin"); // dataset for origin
 	H5::DataSpace mspaceOrigin (1, &col_dims); 
 	filespace = originDataset.getSpace();
 	originDataset.read(origin, H5::PredType::NATIVE_FLOAT, mspaceOrigin, filespace);
 
 	// load number of dimensions from file
-	// printf("Loading dimnesions from file...\n");
 	H5::DataSet dimDataset = file.openDataSet("dim"); // init dimension reader
 	H5::DataSpace mspaceDim (1, &col_dims);
 	filespace = dimDataset.getSpace();
 	dimDataset.read(dim, H5::PredType::NATIVE_UINT64, mspaceDim, filespace);
 	nElements = dim[0] * dim[1] * dim[2];
 
-	printf("Volumetric dataset properties: \n");
-	printf(" - origin:        %.2e, %.2e, %.2e \n", origin[0], origin[1], origin[2]);
-	printf(" - resolution:    %.2e, %.2e, %.2e \n", res[0], res[1], res[2]);
-	printf(" - dimensions:    %d, %d, %d \n", dim[0], dim[1], dim[2]);
-	
 	// read actual datamatrix
-	// printf("Loading data from file...\n");
 	H5::DataSet dataDataset = file.openDataSet("vol"); // read actual dataset
 	const hsize_t col_dims_data = nElements; 
 	H5::DataSpace mspaceData (1, &col_dims_data);	
 	filespace = dataDataset.getSpace();
 	
-	printf("allocating memory...\n");
 	alloc_memory();
 
-	printf("reading into memory...\n");
 	dataDataset.read(data, H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
 
 	isMemAlloc = 1;
 
 	file.close();
-	vprintf("done!", 0);
 	return;
 }
 
 // prints all the required information about the loaded volume
-void volume::printInformation() const
+void volume::print_information() const
 {
 	printf("Volumetric dataset properties: \n");
 	printf(" - origin:        %.2e, %.2e, %.2e \n", origin[0], origin[1], origin[2]);
 	printf(" - resolution:    %.2e, %.2e, %.2e \n", res[0], res[1], res[2]);
-	printf(" - dimensions:    %d, %d, %d \n", dim[0], dim[1], dim[2]);
+	printf(" - dimensions:    %lu, %lu, %lu \n", dim[0], dim[1], dim[2]);
 	printf(" - first element: %f \n - last element:  %f\n", data[0], data[nElements - 1]);
+	return;
+}
+
+void volume::set_filePath(const string _filePath)
+{
+	filePath = _filePath;
 	return;
 }
 
@@ -478,7 +573,7 @@ float volume::getRangeLimitedPos(const float pos, const uint8_t _dim) const
 }
 
 // get cropped volume, start and stopped passed as array
-void volume::getCroppedVolume(
+void volume::get_croppedVolume(
 	float* vol, const uint64_t *startIdx, const uint64_t *stopIdx) const
 {
  
@@ -494,7 +589,7 @@ void volume::getCroppedVolume(
 }
 
 void volume::getCroppedVolume(
-	float* vol, // array pointing to volume
+	float* vol, // array pointing to output volume
 	const uint64_t start0, const uint64_t stop0,
 	const uint64_t start1, const uint64_t stop1,
 	const uint64_t start2, const uint64_t stop2) const
@@ -768,19 +863,19 @@ void volume::calcCroppedMips()
 		croppedMipY[iElem] = 0;
 
 	const uint64_t idxCropRange[6] = {
-		getIdx0(cropRange[0]),
-		getIdx0(cropRange[1]),
-		getIdx1(cropRange[2]),
-		getIdx1(cropRange[3]),
-		getIdx2(cropRange[4]),
-		getIdx2(cropRange[5])
+		get_idx0(cropRange[0]),
+		get_idx0(cropRange[1]),
+		get_idx1(cropRange[2]),
+		get_idx1(cropRange[3]),
+		get_idx2(cropRange[4]),
+		get_idx2(cropRange[5])
 	};
 
 	const uint64_t deltaZ = idxCropRange[1] - idxCropRange[0] + 1; // total number of zs
 	const uint64_t deltaX = idxCropRange[3] - idxCropRange[2] + 1; // total number of zs
 	const uint64_t deltaY = idxCropRange[5] - idxCropRange[4] + 1; // total number of zs
 	
-	printf("Cropping range: %d ... %d, %d ... %d, %d ... %d\n",
+	printf("Cropping range: %lu ... %lu, %lu ... %lu, %lu ... %lu\n",
 		idxCropRange[0], idxCropRange[1],
 		idxCropRange[2], idxCropRange[3],
 		idxCropRange[4], idxCropRange[5]);
@@ -1007,4 +1102,29 @@ void volume::set_cropRangeY(const float* _cropY)
 		}
 	}
 	return;
+}
+
+// normalize the entire array
+void volume::normalize()
+{
+	const float normVal = getNorm(data, nElements);
+	if (normVal > 0)
+	{
+		for (uint64_t iElem = 0; iElem < nElements; iElem++)
+		{
+			data[iElem] = data[iElem] / normVal;
+		}
+	}
+	return;
+}
+
+float volume::get_norm() const
+{
+	return getNorm(data, nElements);
+}
+
+// fills volume with random values between 0 and maxVal
+void volume::rand(const float maxVal)
+{
+
 }
