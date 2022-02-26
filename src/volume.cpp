@@ -29,6 +29,48 @@ volume::~volume()
 	}
 }
 
+bool volume::operator == (const volume& volumeB) const
+{
+	bool isSame = 1;
+
+	// check if number of elements is the same
+	if (this->nElements != volumeB.get_nElements())
+	{
+		printf("Arrays need to have the same size for this operation\n");
+		throw "InvalidSize";
+	}
+
+	for (uint64_t iElement = 0; iElement < this->nElements; iElement++)
+	{
+		if (this->data[iElement] != volumeB.get_value(iElement))
+		{
+			isSame = 0;
+		}
+	}
+	return isSame;
+}
+
+bool volume::operator != (const volume& volumeB) const
+{
+	bool isSame = 1;
+
+	// check if number of elements is the same
+	if (this->nElements != volumeB.get_nElements())
+	{
+		printf("Arrays need to have the same size for this operation\n");
+		throw "InvalidSize";
+	}
+
+	for (uint64_t iElement = 0; iElement < this->nElements; iElement++)
+	{
+		if (this->data[iElement] != volumeB.get_value(iElement))
+		{
+			isSame = 0;
+		}
+	}
+	return (!isSame);
+}
+
 
 // operators
 volume& volume::operator = (const float setVal)

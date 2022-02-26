@@ -121,7 +121,33 @@ int main()
 		throw "InvalidValue";
 	}
 
-	printf("Looks like we passed all tests successfully so far\n");
+	A = 1.23f;
+	B = 1.33f;
+	if (A == B)
+	{
+		printf("Values should just not be the same now\n");
+		throw "InvalidValue";
+	}
+
+	if (!(A != B))
+	{
+		printf("Values should just not be the same now\n");
+		throw "InvalidValue";
+	}
+
+	A = 1.24f;
+	B = 1.24f;
+	if (!(A == B))
+	{
+		printf("Values should just be the same now\n");
+		throw "InvalidValue";
+	}
+
+	if (A != B)
+	{
+		printf("Values should just not be the same now\n");
+		throw "InvalidValue";
+	}	printf("Looks like we passed all tests successfully so far\n");
 
 	return 0;
 }

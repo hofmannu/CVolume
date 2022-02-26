@@ -81,6 +81,10 @@ public:
 	volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2);
 	~volume(); // class destructor
 
+	// check if volumes are the same or not the same
+	bool operator == (const volume& volumeB) const;
+	bool operator != (const volume& volumeB) const;
+
 	// assignment operator
 	volume& operator = (const float setVal); // set entire volume to a value
 	volume& operator = (const volume& volumeB);

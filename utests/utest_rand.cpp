@@ -10,12 +10,10 @@
 
 #include "../src/volume.h"
 
-
 int main()
 {
 
 	volume volIn(100, 100, 100);
-
 
 	// here we fill with range -1 ... 1
 	volIn.fill_rand(-1.0f, 1.0f);
@@ -30,7 +28,6 @@ int main()
 	{
 		printf("Maximumg value returned should be smaller or equal 1.0f");
 	}
-
 
 	// here we fill with range 0 ... 2
 	volIn.fill_rand(2.0f);

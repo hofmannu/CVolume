@@ -15,10 +15,16 @@ int main()
 {
 
 	volume volIn(100, 100, 100);
+	volIn.fill_rand();
 	
-	volIn.fill_rand(0.0f, 1.0f);
-	
+	volume volOut = volIn;
+	if (volOut != volIn)
+	{
+		printf("Copy constructor should generate identical volumes");
+		throw "InvalidValue";
+	}
 
+	// check if volumes are the same
 
 
 
