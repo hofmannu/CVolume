@@ -1123,8 +1123,30 @@ float volume::get_norm() const
 	return getNorm(data, nElements);
 }
 
-// fills volume with random values between 0 and maxVal
-void volume::rand(const float maxVal)
-{
 
+// subroutines to fill volume with random numbers
+void volume::fill_rand()
+{
+	fill_rand(0.0f, 1.0f);
+	return;
+}
+
+// fills volume with random values between 0 and maxVal
+void volume::fill_rand(const float maxVal)
+{
+	fill_rand(0.0f, maxVal);
+	return;
+}
+
+// fills volume with random numbers between minVal and maxVal
+void volume::fill_rand(const float minVal, const float maxVal)
+{
+	srand(time(0));
+	#pragma unroll
+	for (uint64_t iElem = 0; iElem < nElements; iElem++)
+	{
+		const float randVal = (float) rand() / (float) RAND_MAX;
+		data[iElem] = (randVal * (maxVal - minVal)) - minVal; 
+	}
+	return;
 }

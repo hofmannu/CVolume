@@ -7,9 +7,13 @@
 	Changelog:
 		hofmannu - 14.08.2020 - added const to get functions
 		hofmannu - 14.08.2020 - added #ifndef loop
+		hofmannu - 26.02.2022 - added operators
+		hofmannu - 26.02.2022 - moved to more consistent naming scheme
+
 
 	Todo:
 		hofmannu - add paraview export functionality
+		hofmannu 
 */
 
 #ifndef VOLUME_H
@@ -19,6 +23,7 @@
 #include <time.h>
 #include <thread>
 #include <pthread.h>
+#include <cstdlib>
 #include "baseClass.h"
 #include <H5Cpp.h>
 #include "basicMathOp.h"
@@ -68,8 +73,7 @@ private:
 	float minValCrop = 0;
 	float maxValCrop = 0;
 
-	// multiprocessor stuff
-	int processor_count = 1;
+	int processor_count = 1; // variable containing the number of CPU processing units
 
 public:
 	// class constructor and destructor
@@ -223,7 +227,9 @@ public:
 
 	void normalize();
 	float get_norm() const;
-	void rand(const float maxVal);
+	void fill_rand(); // fill array with random values
+	void fill_rand(const float maxVal); // fill array with random values
+	void fill_rand(const float minVal, const float maxVal); // fill array with random values
 };
 
 #endif
