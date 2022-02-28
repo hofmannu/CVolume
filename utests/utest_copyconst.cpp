@@ -10,7 +10,6 @@
 
 #include "../src/volume.h"
 
-
 int main()
 {
 
@@ -25,8 +24,20 @@ int main()
 	}
 
 	// check if volumes are the same
+	if (volOut != volIn)
+	{
+		printf("Copy constructor should result in the same elements for entire volume");
+		throw "InvalidValue";
+	}
 
-
+	// set a value in volOut and make sure that volIn remains the same
+	const float testVal = volIn.get_value(101);
+	volOut.set_value(101, 1.1f);
+	if (testVal != volIn.get_value(101))
+	{
+		printf("A modification to the copied volume should leave input volume intact.\n");
+		throw "InvalidValue";
+	}
 
 	return 0;
 }

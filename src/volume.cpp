@@ -29,6 +29,21 @@ volume::~volume()
 	}
 }
 
+// copy constructor (this is new instance, obj is the one we copy from
+volume::volume(const volume& obj)
+{
+	for (uint8_t iDim = 0; iDim < 3; iDim++)
+	{
+		this->set_dim(iDim, obj.get_dim(iDim));
+		this->origin[iDim] = obj.get_origin(iDim);
+		this->res[iDim] = obj.get_res(iDim);
+	}
+
+	this->alloc_memory();
+	memcpy(this->data, obj.get_pdata(), this->nElements * sizeof(float));
+	return;
+}
+
 bool volume::operator == (const volume& volumeB) const
 {
 	bool isSame = 1;
@@ -353,11 +368,6 @@ void volume::set_origin(const uint8_t _dim, const float _origin)
 {
 	origin[_dim] = _origin;
 	return;
-}
-
-float volume::get_origin(const uint8_t _dim)
-{
-	return origin[_dim];
 }
 
 // set resolution of volumetric dataset

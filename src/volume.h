@@ -81,6 +81,9 @@ public:
 	volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2);
 	~volume(); // class destructor
 
+	// copy constructor
+	volume(const volume& obj);
+
 	// check if volumes are the same or not the same
 	bool operator == (const volume& volumeB) const;
 	bool operator != (const volume& volumeB) const;
@@ -134,7 +137,7 @@ public:
 	void set_origin(const float* _origin);
 	void set_origin(const uint8_t _dim, const float _origin);
 	void set_origin(const float origin0, const float origin1, const float origin2);
-	float get_origin(const uint8_t _dim);
+	float get_origin(const uint8_t _dim) const {return origin[_dim];};
 
 	// different ways to define matrix elements
 	void set_value(const float value); // set whole array to certain value
@@ -188,6 +191,8 @@ public:
 		const uint64_t* startIdx, 
 		const uint64_t* stopIdx) const;
 
+	void crop(const uint64_t& startIdx, const uint64_t& stopIdx);
+
 	void exportVtk(const string filePath);
 
 	void calcMinMax();
@@ -214,7 +219,7 @@ public:
 	string get_filePath() const {return filePath;};
 	void set_filePath(const string _filePath);
 
-	float* get_pdata() {return data;};
+	const float* get_pdata() const {return data;};
 	void set_pdata(float* _data);
 
 	// get slices of volume
