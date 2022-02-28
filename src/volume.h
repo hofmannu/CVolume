@@ -82,7 +82,7 @@ public:
 	~volume(); // class destructor
 
 	// copy constructor
-	volume(const volume& obj);
+	volume(volume& obj);
 
 	// check if volumes are the same or not the same
 	bool operator == (const volume& volumeB) const;
@@ -90,21 +90,22 @@ public:
 
 	// assignment operator
 	volume& operator = (const float setVal); // set entire volume to a value
-	volume& operator = (const volume& volumeB);
+	volume& operator = (volume& volumeB);
 
 	// multiplication operator
 	volume& operator *= (const float multVal);
-	volume operator * (const float multVal);
+	// volume operator * (const float multVal);
 
 	// division operator
-	volume operator /(const float divVal);
+	volume& operator /= (const float divVal);
+	// volume& operator /(const volume& inVol, const float divVal);
 
 	// addition operator
 	volume& operator += (const volume& volumeB);
 
 	// substraction operator
 	volume& operator -= (const volume& volumeB);
-	volume operator -(const volume& volumeB);
+	// volume operator -(const volume& volumeB);
 
 	float operator[] (const std::size_t idx) const;
 
@@ -191,7 +192,7 @@ public:
 		const uint64_t* startIdx, 
 		const uint64_t* stopIdx) const;
 
-	void crop(const uint64_t& startIdx, const uint64_t& stopIdx);
+	void crop(const uint64_t* startIdx, const uint64_t* stopIdx);
 
 	void exportVtk(const string filePath);
 
@@ -219,7 +220,7 @@ public:
 	string get_filePath() const {return filePath;};
 	void set_filePath(const string _filePath);
 
-	const float* get_pdata() const {return data;};
+	float* get_pdata() {return data;};
 	void set_pdata(float* _data);
 
 	// get slices of volume

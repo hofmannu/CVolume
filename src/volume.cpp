@@ -30,7 +30,7 @@ volume::~volume()
 }
 
 // copy constructor (this is new instance, obj is the one we copy from
-volume::volume(const volume& obj)
+volume::volume(volume& obj)
 {
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
@@ -44,6 +44,7 @@ volume::volume(const volume& obj)
 	return;
 }
 
+// equal and not equal operators
 bool volume::operator == (const volume& volumeB) const
 {
 	bool isSame = 1;
@@ -87,7 +88,7 @@ bool volume::operator != (const volume& volumeB) const
 }
 
 
-// operators
+// sign constant value to all entries of data
 volume& volume::operator = (const float setVal)
 {
 	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
@@ -97,18 +98,32 @@ volume& volume::operator = (const float setVal)
 	return *this;
 }
 
-volume& volume::operator = (const volume& volumeB)
+volume& volume::operator = (volume& volumeB)
 {
-	if (nElements != volumeB.get_nElements())
+	printf("Assigment operator called\n");
+	if (nElements == volumeB.get_nElements())
 	{
-		printf("To use assignment operator, both values must have the same number of elements\n");
-		throw "InvalidSize";
+		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
+	}
+	else // size is different, lets first resize output volume 
+	{
+		#pragma unroll
+		for (uint64_t iDim = 0; iDim < 3; iDim++)
+		{
+			this->set_dim(iDim, volumeB.get_dim(iDim));
+		}
+		this->alloc_memory();
+		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
 
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	// push resolution and origin over
+	#pragma unroll
+	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
-		this->data[iElem] =	volumeB[iElem];
+		this->set_res(iDim, volumeB.get_res(iDim));
+		this->set_origin(iDim, volumeB.get_origin(iDim));
 	}
+
 	return *this;
 }
 
@@ -122,22 +137,32 @@ volume& volume::operator *= (const float multVal)
 	return *this;
 }
 
-volume volume::operator *(const float multVal)
-{
-	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
-	for (unsigned int idx = 0; idx < this->nElements; idx++)
-		retVol.set_value(idx, this->data[idx] * multVal);
-	return retVol;
-}
+// volume volume::operator *(const float multVal)
+// {
+// 	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
+// 	for (unsigned int idx = 0; idx < this->nElements; idx++)
+// 		retVol.set_value(idx, this->data[idx] * multVal);
+// 	return retVol;
+// }
 
 // division operator
+// volume volume::operator /(const float divVal)
+// {
+// 	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
+// 	for (unsigned int idx = 0; idx < this->nElements; idx++)
+// 		retVol.set_value(idx, this->data[idx] / divVal);
+// 	return retVol;
+// }
 
-volume volume::operator /(const float divVal)
+volume& volume::operator /=(const float divVal)
 {
-	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
-	for (unsigned int idx = 0; idx < this->nElements; idx++)
-		retVol.set_value(idx, this->data[idx] / divVal);
-	return retVol;
+	const float multVal = 1.0f / divVal; 
+	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] =	this->data[iElem] * multVal;
+	}
+	return *this;
+
 }
 
 // addition operator
@@ -286,7 +311,6 @@ void volume::alloc_memory()
 		delete[] croppedMipZ;
 	}
 
-	isMemAlloc = 1; // set flag for memory allocation
 
 	// allocate memory for data array	
 	uint64_t nElements = dim[0] * dim[1] * dim[2];
@@ -306,10 +330,11 @@ void volume::alloc_memory()
 	croppedMipZ = new float [dim[1] * dim[2]];
 	croppedMipX = new float [dim[0] * dim[2]];
 	croppedMipY = new float [dim[0] * dim[1]];
+	isMemAlloc = 1; // set flag for memory allocation
 	return;
 }
 
-// scales whole data array by a number
+// scales whole data array by a number (deprecated, will be removed soon)
 void volume::multiply(const float factor)
 {
 	unsigned int nElements = dim[0] * dim[1] * dim[2];
@@ -502,7 +527,7 @@ uint64_t volume::get_nElements() const
 	return dim[0] * dim[1] * dim[2];
 }
 
-// not implemented yet
+// saving and reading data from and to h5 file
 void volume::saveToFile(const string filePath) const
 {
 	H5::H5File file(filePath, H5F_ACC_TRUNC);
@@ -720,6 +745,57 @@ void volume::getCroppedVolume(
 			}
 		}
 	}
+
+	return;
+}
+
+void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
+{
+	uint64_t dimNew[3] = {0,0,0};
+	#pragma unroll
+	for (uint8_t iDim = 0; iDim < 3; iDim++)
+	{
+		if (stopIdx[iDim] < startIdx[iDim])
+		{
+			printf("Stop index must be larger then start index\n");
+			throw "InvalidValue";
+		}
+
+		if (stopIdx[iDim] > dim[iDim])
+		{
+			printf("Cropping is exceeding array dimensions along dim %d (%lu of %lu)\n", 
+				iDim, stopIdx[iDim], dim[iDim]);
+			throw "InvalidValue";
+		}
+		dimNew[iDim] = stopIdx[iDim] - startIdx[iDim] + 1;
+	}
+
+	float* newData = new float [dimNew[0] * dimNew[1] * dimNew[2]];
+
+	for (uint64_t iz = 1; iz < dimNew[2]; iz++)
+	{
+		const uint64_t izOld = iz + startIdx[2];
+		for (uint64_t iy = 0; iy < dimNew[1]; iy++)
+		{
+			const uint64_t iyOld = iy + startIdx[1];
+			const uint64_t idxNew = dimNew[0] * (iy + dimNew[1] * iz);
+			const uint64_t idxOld = startIdx[0] + dim[0] * (iyOld + dim[1] * izOld);
+			memcpy(&newData[idxNew], &data[idxOld], dimNew[0] * sizeof(float));
+		}
+	}
+
+	// update dimensions and origin
+	#pragma unroll
+	for (uint8_t iDim = 0; iDim < 3; iDim++)
+	{
+		origin[iDim] = origin[iDim] + res[iDim] * (float) startIdx[iDim];
+		set_dim(iDim, dim[iDim]);
+		dim[iDim] = dimNew[iDim];
+	}
+
+	alloc_memory();
+	delete[] data;
+	data = newData;
 
 	return;
 }

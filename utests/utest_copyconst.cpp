@@ -39,5 +39,7 @@ int main()
 		throw "InvalidValue";
 	}
 
+	volOut = volIn;
+
 	return 0;
 }

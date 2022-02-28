@@ -53,7 +53,7 @@ int main()
 	volume B(100, 100, 100);
 	A = 2.0f;
 	B = 3.0f;
-	A = B * 4.0f;
+	A = B; A *= 4.0f;
 	if (A[100] != 12.0f)
 	{
 		printf("A was not updated properly (A = B * c)\n");
@@ -72,7 +72,7 @@ int main()
 	// B needs to remain unchanged after operation
 	A = 7.0f;
 	B = 8.0f;
-	A = B / 2.0f;
+	A = B; A /= 2.0f;
 	if (A[100] != 4.0f)
 	{
 		printf("A was not updated properly (A = B * c)\n");

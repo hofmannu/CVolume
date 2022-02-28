@@ -25,5 +25,6 @@ add_test(NAME cvolume_arrayops COMMAND UtestArrayops)
 add_test(NAME cvolume_normalize COMMAND UtestNormalize)
 add_test(NAME cvolume_random COMMAND UtestRandom)
 add_test(NAME cvolume_copyconst COMMAND UtestCopyConst)
+add_test(NAME cvolume_crop COMMAND UtestCrop)
 
 enable_testing()
