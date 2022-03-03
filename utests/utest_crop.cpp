@@ -23,8 +23,7 @@ int main()
 	}
 
 	// try cropping on copy (should work just fine)
-	testVolCpy.crop(startIdx, stopIdx);
-
+	testVolCpy.crop(startIdx, stopIdx); 
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		const uint64_t newDim = stopIdx[iDim] - startIdx[iDim] + 1;

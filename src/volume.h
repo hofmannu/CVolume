@@ -97,7 +97,7 @@ public:
 	// volume operator * (const float multVal);
 
 	// division operator
-	volume& operator /= (const float divVal);
+	volume& operator /=(const float divVal);
 	// volume& operator /(const volume& inVol, const float divVal);
 
 	// addition operator

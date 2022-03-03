@@ -100,7 +100,6 @@ volume& volume::operator = (const float setVal)
 
 volume& volume::operator = (volume& volumeB)
 {
-	printf("Assigment operator called\n");
 	if (nElements == volumeB.get_nElements())
 	{
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
@@ -211,13 +210,12 @@ float* volume::get_psliceZ(const uint64_t zLevel)
 	{
 		lastSliceZ = zLevel;
 		// update slice
-		for (uint64_t ix = 0; ix < dim[1]; ix++)
+		for (uint64_t ix = 0; ix < dim[0]; ix++)
 		{
-			for (uint64_t iy = 0; iy < dim[2]; iy++)
+			for (uint64_t iy = 0; iy < dim[1]; iy++)
 			{
-				const uint64_t sliceIdx = ix + iy * dim[1];
-				const uint64_t volIdx = zLevel + ix * dim[0] + iy
-					* dim[0] * dim[1];
+				const uint64_t sliceIdx = ix + iy * dim[0];
+				const uint64_t volIdx = ix + dim[0] * (iy + dim[1] * zLevel);
 				sliceZ[sliceIdx] = data[volIdx];
 			}
 		}
@@ -233,13 +231,13 @@ float* volume::get_psliceX(const uint64_t xLevel)
 	{
 		lastSliceX = xLevel;
 		// update slice
-		for (uint64_t iz = 0; iz < dim[0]; iz++)
+		for (uint64_t iz = 0; iz < dim[2]; iz++)
 		{
-			for (uint64_t iy = 0; iy < dim[2]; iy++)
+			for (uint64_t iy = 0; iy < dim[1]; iy++)
 			{
-				const uint64_t sliceIdx = iz + iy * dim[0];
-				const uint64_t volIdx = iz + xLevel * dim[0] + iy
-					* dim[0] * dim[1];
+				const uint64_t sliceIdx = iz + iy * dim[2];
+				const uint64_t volIdx = xLevel + dim[0] * (iy + dim[1] * iz);
+
 				sliceX[sliceIdx] = data[volIdx];
 			}
 		}
@@ -255,13 +253,12 @@ float* volume::get_psliceY(const uint64_t yLevel)
 	{
 		lastSliceY = yLevel;
 		// update slice
-		for (uint64_t iz = 0; iz < dim[0]; iz++)
+		for (uint64_t iz = 0; iz < dim[2]; iz++)
 		{
-			for (uint64_t ix = 0; ix < dim[1]; ix++)
+			for (uint64_t ix = 0; ix < dim[0]; ix++)
 			{
-				const uint64_t sliceIdx = ix + iz * dim[1];
-				const uint64_t volIdx = iz + ix * dim[0] + yLevel
-					* dim[0] * dim[1];
+				const uint64_t sliceIdx = ix + iz * dim[0];
+				const uint64_t volIdx = ix + dim[0] * (yLevel + dim[1] * iz);
 				sliceY[sliceIdx] = data[volIdx];
 			}
 		}
@@ -317,19 +314,19 @@ void volume::alloc_memory()
 	data = new float[nElements];
 	
 	// allocate memory for crosssections
-	sliceZ = new float [dim[1] * dim[2]]; 
-	sliceX = new float [dim[0] * dim[2]];
-	sliceY = new float [dim[0] * dim[1]];
+	sliceZ = new float [dim[0] * dim[1]]; 
+	sliceX = new float [dim[1] * dim[2]];
+	sliceY = new float [dim[0] * dim[2]];
 
 	// allocate memory for mips
-	mipZ = new float [dim[1] * dim[2]];
-	mipX = new float [dim[0] * dim[2]];
-	mipY = new float [dim[0] * dim[1]];
+	mipZ = new float [dim[0] * dim[1]];
+	mipX = new float [dim[1] * dim[2]];
+	mipY = new float [dim[0] * dim[2]];
 
 	// allocate memory for cropped mips
-	croppedMipZ = new float [dim[1] * dim[2]];
-	croppedMipX = new float [dim[0] * dim[2]];
-	croppedMipY = new float [dim[0] * dim[1]];
+	croppedMipZ = new float [dim[0] * dim[1]];
+	croppedMipX = new float [dim[1] * dim[2]];
+	croppedMipY = new float [dim[0] * dim[2]];
 	isMemAlloc = 1; // set flag for memory allocation
 	return;
 }

@@ -18,13 +18,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 
 # here comes all stugg related to unit testing
 add_subdirectory(utests/)
-add_test(NAME cvolume_constructor COMMAND UtestConstructor)
-add_test(NAME cvolume_setget COMMAND UtestSetGet)
-add_test(NAME cvolume_pos COMMAND UtestPositions)
-add_test(NAME cvolume_arrayops COMMAND UtestArrayops)
-add_test(NAME cvolume_normalize COMMAND UtestNormalize)
-add_test(NAME cvolume_random COMMAND UtestRandom)
-add_test(NAME cvolume_copyconst COMMAND UtestCopyConst)
-add_test(NAME cvolume_crop COMMAND UtestCrop)
 
 enable_testing()
