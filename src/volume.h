@@ -29,13 +29,18 @@
 #include "basicMathOp.h"
 #include "vtkwriter.h"
 #include "griddedData.h"
+#include "../lib/nifti/niftilib/nifti1.h"
+
+#define MIN_HEADER_SIZE 348
+#define NII_HEADER_SIZE 352
 
 using namespace std;
 
 class volume : public baseClass, public basicMathOp
 {
 private:
-	string filePath;
+	string outPath; // path pointing to our output file
+	string inPath; // path pointing to our input file
 
 	uint64_t dim[3] = {0, 0, 0}; // dimensionailty of volume
 	uint64_t nElements = 0; // overall number of elements in 
@@ -74,6 +79,9 @@ private:
 	float maxValCrop = 0;
 
 	int processor_count = 1; // variable containing the number of CPU processing units
+
+	nifti_1_header hdr;
+
 
 public:
 	// class constructor and destructor
@@ -165,15 +173,22 @@ public:
 	uint64_t get_idx2(const float pos2) const;
 	uint64_t get_idx(const float pos, const uint8_t iDim) const;
 
-	float get_length(const uint8_t _dim); 
+	float get_length(const uint8_t _dim) const; 
 	// returns length of dataset along a certain dimension
 
 	uint64_t get_nElements() const;
 	void alloc_memory();
 
-	void readFromFile(); // read from file with existing path variable
-	void readFromFile(const string _filePath); // read from h5 file
-	void saveToFile(const string filePath) const;
+	void readFromFile(const string _filePath); // read from file, distinguish type by ending
+	void saveToFile(const string _filePath); // save to file, distinguish type by ending
+
+	// reading and writing from and to h5
+	void read_h5(const string _filePath);
+	void save_h5(const string _filePath);
+
+	// read and save from and to nii
+	void read_nii(const string _filePath);
+	void save_nii(const string _filePath);
 
 	void print_information() const; 
 
@@ -213,14 +228,11 @@ public:
 	void set_cropRangeZ(const float* _cropZ);
 	bool get_updatedCropRange() const {return updatedCropRange;};
 
-
 	float get_minValCrop() const {return minValCrop;};
 	float get_maxValCrop() const {return maxValCrop;};
 
-	string get_filePath() const {return filePath;};
-	void set_filePath(const string _filePath);
-
 	float* get_pdata() {return data;};
+	const float* get_pdata() const {return data;};
 	void set_pdata(float* _data);
 
 	// get slices of volume

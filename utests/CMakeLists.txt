@@ -30,3 +30,4 @@ add_executable(UtestCrop utest_crop.cpp)
 target_link_libraries(UtestCrop PUBLIC Volume)
 add_test(NAME cvolume_crop COMMAND UtestCrop)
 
+enable_testing()
