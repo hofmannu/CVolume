@@ -88,7 +88,7 @@ bool volume::operator != (const volume& volumeB) const
 }
 
 
-// sign constant value to all entries of data
+// sign constant value to all entries of data, origin, and resolution
 volume& volume::operator = (const float setVal)
 {
 	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
@@ -110,7 +110,7 @@ volume& volume::operator = (volume& volumeB)
 		for (uint64_t iDim = 0; iDim < 3; iDim++)
 		{
 			this->set_dim(iDim, volumeB.get_dim(iDim));
-		}
+				}
 		this->alloc_memory();
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
