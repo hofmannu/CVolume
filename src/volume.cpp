@@ -87,7 +87,6 @@ bool volume::operator != (const volume& volumeB) const
 	return (!isSame);
 }
 
-
 // sign constant value to all entries of data, origin, and resolution
 volume& volume::operator = (const float setVal)
 {
@@ -286,7 +285,7 @@ float* volume::get_psliceY(const float yPos)
 	return get_psliceY(yIdx);
 }
 
-float volume::get_length(const uint8_t _dim)
+float volume::get_length(const uint8_t _dim) const
 {
 	return (float) dim[_dim] * res[_dim];
 }
@@ -414,7 +413,7 @@ void volume::set_res(const uint8_t _dim, const float _res)
 {
 	if (_res <= 0)
 	{
-		printf("Resolution along %d axis needs to be bigger then 0\n");
+		printf("Resolution along %d axis needs to be bigger then 0\n", _dim);
 		throw "invalidValue";
 	}
 	res[_dim] = _res;
@@ -524,10 +523,193 @@ uint64_t volume::get_nElements() const
 	return dim[0] * dim[1] * dim[2];
 }
 
-// saving and reading data from and to h5 file
-void volume::saveToFile(const string filePath) const
+
+// returns the file extension of a given path
+string getFileExt(const string _filePath)
 {
-	H5::H5File file(filePath, H5F_ACC_TRUNC);
+
+	size_t i = _filePath.rfind('.', _filePath.length());
+   if (i != string::npos) {
+      return(_filePath.substr(i+1, _filePath.length() - i));
+   }
+
+  return(""); 
+}
+
+// saving and reading data from and to h5 file
+void volume::saveToFile(const string _filePath)
+{
+	// requires implementation
+	const string ext = getFileExt(_filePath);
+
+	if (!strcmp(ext.c_str(), "h5"))
+	{
+		printf("Saving to h5 file...\n");
+		save_h5(_filePath);
+	}
+	else if (!strcmp(ext.c_str(), "nii"))
+	{
+		printf("Saving to nii file...\n");
+		save_nii(_filePath);
+	}
+	else
+	{
+		throw "InvalidType";
+	}
+	return;
+}
+
+void volume::readFromFile(const string _filePath)
+{
+	// requires implementation
+	// requires implementation
+	const string ext = getFileExt(_filePath);
+
+	if (!strcmp(ext.c_str(), "h5"))
+	{
+		printf("Reading form h5 file...\n");
+		read_h5(_filePath);
+	}
+	else if (!strcmp(ext.c_str(), "nii"))
+	{
+		printf("Reading form nii file...\n");
+		read_nii(_filePath);
+	}
+	else
+	{
+		printf("I do not support loading from this file type.\n");
+		throw "InvalidType";
+	}
+
+	return;
+}
+
+// saves our dataset to a nii file
+void volume::save_nii(const string _filePath)
+{
+	outPath = _filePath;
+
+	nifti1_extender pad={0,0,0,0};
+  int ret;
+
+  hdr.datatype = DT_FLOAT;
+  
+  FILE *fp = fopen(outPath.c_str(), "w");
+  if (fp == NULL) 
+  {
+    printf("Error opening header file %s for write\n", outPath.c_str());
+    throw "FileError";
+  }
+
+  ret = fwrite(&hdr, MIN_HEADER_SIZE, 1, fp);
+  if (ret != 1) 
+  {
+    printf("Error writing header file %s\n", outPath.c_str());
+    throw "FileError";
+  }
+
+  ret = fwrite(&pad, 4, 1, fp);
+  if (ret != 1) 
+  {
+    printf("Error writing header file extension pad %s\n", outPath.c_str());
+   throw "FileError";
+  }
+
+  ret = fwrite(data, sizeof(float), nElements, fp);
+  if (ret != nElements) {
+    printf("Error writing data to %s\n", outPath.c_str());
+    throw "FileError";
+  }
+
+  fclose(fp);
+
+	return;
+}
+
+// reads the dataset from our nii file
+void volume::read_nii(const string _filePath)
+{
+	inPath = _filePath;
+
+	// open and read header
+  FILE *fp = fopen(inPath.c_str(), "r");
+  if (fp == NULL) 
+  {
+    printf("Error opening header file %s\n", inPath.c_str());
+    throw "FileError";
+  }
+
+  int ret = fread(&hdr, MIN_HEADER_SIZE, 1, fp);
+  if (ret != 1) 
+  {
+    printf("Error reading header file %s\n", inPath.c_str());
+    throw "OperationFailed";
+  }
+
+  ret = fseek(fp, (long)(hdr.vox_offset), SEEK_SET);
+  if (ret != 0) 
+  {
+    printf("Error doing fseek() to %ld in data file %s\n",
+      (long)(hdr.vox_offset), inPath.c_str());
+    throw "InvalidOperation";
+  }
+
+  // move dimensions from header struct to volume
+  set_dim(hdr.dim[1], hdr.dim[2], hdr.dim[3]);
+  set_res(hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3]);
+  // printf("Dataset dimensions: %lu x %lu x %lu", 
+  // 	hdr.dim[1], hdr.dim[2], hdr.dim[3]);
+  alloc_memory();
+
+  if (hdr.datatype == DT_FLOAT)
+  {
+    ret = fread(data, sizeof(float), nElements, fp);
+    if (ret != nElements)
+    {
+      printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
+      exit(1);
+    }
+  }
+  else if (hdr.datatype == DT_INT16)
+  {
+    int16_t* tempArray = new int16_t[hdr.dim[1] * hdr.dim[2] * hdr.dim[3]];
+    ret = fread(tempArray, sizeof(int16_t), hdr.dim[1] * hdr.dim[2] * hdr.dim[3], fp);
+    if (ret != nElements)
+    {
+      printf("Error reading volume 1 from %s (%d)\n",
+        inPath.c_str(), ret);
+      exit(1);
+    }
+
+    // convert to float
+    for (int iElem = 0; iElem < (hdr.dim[1] * hdr.dim[2] * hdr.dim[3]); iElem++)
+      data[iElem] = (float) tempArray[iElem];
+
+    delete[] tempArray;
+  }
+  else
+  {
+    printf("Data type %d requires implementation!\n", hdr.datatype);
+    throw "InvalidValue";
+  }
+
+  fclose(fp);
+
+  // scale the data buffer
+  if (hdr.scl_slope != 0) 
+  {
+    for (int i=0; i < hdr.dim[1] * hdr.dim[2] * hdr.dim[3]; i++)
+      data[i] = (data[i] * hdr.scl_slope) + hdr.scl_inter;
+  }
+
+	return;
+}
+
+// save fata to a h5 file
+void volume::save_h5(const string _filePath)
+{
+	outPath = _filePath;
+	H5::H5File file(outPath, H5F_ACC_TRUNC);
 
 	// write resolutiion to file
 	const hsize_t col_dims = 3;
@@ -563,17 +745,11 @@ void volume::saveToFile(const string filePath) const
 	return;
 }
 
-void volume::readFromFile(const string _filePath)
+// read data from a h5 file
+void volume::read_h5(const string _filePath)
 {
-	filePath = _filePath;
-	readFromFile();
-	return;
-}
-
-void volume::readFromFile()
-{
-	// vprintf("Reading from file... ", 1);
-	H5::H5File file(filePath, H5F_ACC_RDONLY); // open dataset as read only
+	inPath = _filePath;
+	H5::H5File file(_filePath, H5F_ACC_RDONLY); // open dataset as read only
 
 	// load resolution from file
 	H5::DataSet resDataset = file.openDataSet("dr"); // init dataset for res 
@@ -619,12 +795,6 @@ void volume::print_information() const
 	printf(" - resolution:    %.2e, %.2e, %.2e \n", res[0], res[1], res[2]);
 	printf(" - dimensions:    %lu, %lu, %lu \n", dim[0], dim[1], dim[2]);
 	printf(" - first element: %f \n - last element:  %f\n", data[0], data[nElements - 1]);
-	return;
-}
-
-void volume::set_filePath(const string _filePath)
-{
-	filePath = _filePath;
 	return;
 }
 

@@ -19,4 +19,3 @@ set(CMAKE_CXX_STANDARD_REQUIRED true)
 # here comes all stugg related to unit testing
 add_subdirectory(utests/)
 
-enable_testing()
