@@ -537,7 +537,7 @@ string getFileExt(const string _filePath)
 }
 
 // saving and reading data from and to h5 file
-void volume::saveToFile(const string _filePath)
+void volume::saveToFile(const string _filePath) const
 {
 	// requires implementation
 	const string ext = getFileExt(_filePath);
@@ -585,39 +585,40 @@ void volume::readFromFile(const string _filePath)
 }
 
 // saves our dataset to a nii file
-void volume::save_nii(const string _filePath)
+void volume::save_nii(const string _filePath) const
 {
-	outPath = _filePath;
+	// outPath = _filePath;
 
 	nifti1_extender pad={0,0,0,0};
   int ret;
+  nifti_1_header hdr_cpy = hdr;
 
-  hdr.datatype = DT_FLOAT;
+  hdr_cpy.datatype = DT_FLOAT;
   
-  FILE *fp = fopen(outPath.c_str(), "w");
+  FILE *fp = fopen(_filePath.c_str(), "w");
   if (fp == NULL) 
   {
-    printf("Error opening header file %s for write\n", outPath.c_str());
+    printf("Error opening header file %s for write\n", _filePath.c_str());
     throw "FileError";
   }
 
-  ret = fwrite(&hdr, MIN_HEADER_SIZE, 1, fp);
+  ret = fwrite(&hdr_cpy, MIN_HEADER_SIZE, 1, fp);
   if (ret != 1) 
   {
-    printf("Error writing header file %s\n", outPath.c_str());
+    printf("Error writing header file %s\n", _filePath.c_str());
     throw "FileError";
   }
 
   ret = fwrite(&pad, 4, 1, fp);
   if (ret != 1) 
   {
-    printf("Error writing header file extension pad %s\n", outPath.c_str());
+    printf("Error writing header file extension pad %s\n", _filePath.c_str());
    throw "FileError";
   }
 
   ret = fwrite(data, sizeof(float), nElements, fp);
   if (ret != nElements) {
-    printf("Error writing data to %s\n", outPath.c_str());
+    printf("Error writing data to %s\n", _filePath.c_str());
     throw "FileError";
   }
 
@@ -706,10 +707,9 @@ void volume::read_nii(const string _filePath)
 }
 
 // save fata to a h5 file
-void volume::save_h5(const string _filePath)
+void volume::save_h5(const string _filePath) const
 {
-	outPath = _filePath;
-	H5::H5File file(outPath, H5F_ACC_TRUNC);
+	H5::H5File file(_filePath, H5F_ACC_TRUNC);
 
 	// write resolutiion to file
 	const hsize_t col_dims = 3;

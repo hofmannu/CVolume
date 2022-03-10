@@ -39,7 +39,6 @@ using namespace std;
 class volume : public baseClass, public basicMathOp
 {
 private:
-	string outPath; // path pointing to our output file
 	string inPath; // path pointing to our input file
 
 	uint64_t dim[3] = {0, 0, 0}; // dimensionailty of volume
@@ -180,15 +179,15 @@ public:
 	void alloc_memory();
 
 	void readFromFile(const string _filePath); // read from file, distinguish type by ending
-	void saveToFile(const string _filePath) ; // save to file, distinguish type by ending
+	void saveToFile(const string _filePath) const; // save to file, distinguish type by ending
 
 	// reading and writing from and to h5
 	void read_h5(const string _filePath);
-	void save_h5(const string _filePath) ;
+	void save_h5(const string _filePath) const;
 
 	// read and save from and to nii
 	void read_nii(const string _filePath);
-	void save_nii(const string _filePath) ;
+	void save_nii(const string _filePath) const;
 
 	void print_information() const; 
 
