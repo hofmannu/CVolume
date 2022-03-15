@@ -89,21 +89,26 @@ public:
 	~volume(); // class destructor
 
 	// copy constructor
-	volume(volume& obj);
+	volume(const volume& obj);
 
 	// check if volumes are the same or not the same
 	bool operator == (const volume& volumeB) const;
 	bool operator != (const volume& volumeB) const;
 
 	// assignment operator
-	volume& operator = (const float setVal); // set entire volume to a value
-	volume& operator = (volume& volumeB);
+	void operator = (const volume& volumeB);
+	void operator = (const float setVal); // set entire volume to a value
+	// volume& operator = (volume& volumeB);
+	// volume operator = (volume& volumeB);
+	// volume operator = (const volume&& volumeB);
 
 	// multiplication operator
 	volume& operator *= (const float multVal);
+	volume operator *(const float multVal) const;
 
 	// division operator
 	volume& operator /=(const float divVal);
+	volume operator /(const float divVal);
 	// volume& operator /(const volume& inVol, const float divVal);
 
 	// addition operator
@@ -123,8 +128,6 @@ public:
 	float get_maxVal() const {return maxVal;};
 	float get_maxAbsVal() const {return maxAbsVal;};
 
-	// functions to act on volume
-	void multiply(const float factor); // multiplies all elements in volume with factor
 
 	// dimensionality of the dataset	
 	void set_dim(const std::size_t dim0, const std::size_t dim1, const std::size_t dim2);
@@ -179,6 +182,7 @@ public:
 
 	std::size_t get_nElements() const;
 	void alloc_memory();
+	void free_memory();
 
 	void readFromFile(const string _filePath); // read from file, distinguish type by ending
 	void saveToFile(const string _filePath) const; // save to file, distinguish type by ending

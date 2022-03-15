@@ -13,24 +13,16 @@ volume::volume(const std::size_t _dim0, const std::size_t _dim1, const std::size
 	volume();
 }
 
+// class destructor
 volume::~volume()
 {
-
 	// if memory was allocated in data, release now
 	if (isMemAlloc)
-	{
-		delete[] data;
-		delete[] sliceZ;
-		delete[] sliceX;
-		delete[] sliceY;
-		delete[] mipZ;
-		delete[] mipX;
-		delete[] mipY;
-	}
+		free_memory();
 }
 
 // copy constructor (this is new instance, obj is the one we copy from
-volume::volume(volume& obj)
+volume::volume(const volume& obj)
 {
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
@@ -88,18 +80,19 @@ bool volume::operator != (const volume& volumeB) const
 }
 
 // sign constant value to all entries of data, origin, and resolution
-volume& volume::operator = (const float setVal)
+void volume::operator = (const float setVal)
 {
 	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] = setVal;
 	}
-	return *this;
+	return;
 }
 
 // copy operator
-volume& volume::operator = (volume& volumeB)
+void volume::operator = (const volume& volumeB)
 {
+	printf("calling normal copy operator");
 	if (nElements == volumeB.get_nElements())
 	{
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
@@ -123,8 +116,26 @@ volume& volume::operator = (volume& volumeB)
 		this->set_origin(iDim, volumeB.get_origin(iDim));
 	}
 
-	return *this;
+	return;
 }
+
+// volume volume::operator = (const volume& volumeB)
+// {
+// 	printf("Calling deep copy assignment operator\n");
+
+// 	volume retVol;
+// 	#pragma unroll
+// 	for (std::size_t iDim = 0; iDim < 3; iDim++)
+// 	{
+// 		retVol.set_res(iDim, volumeB.get_res(iDim));
+// 		retVol.set_origin(iDim, volumeB.get_origin(iDim));
+// 		retVol.set_dim(iDim, volumeB.get_dim(iDim));
+// 	}
+
+// 	retVol.alloc_memory();
+// 	memcpy(retVol.get_pdata(), volumeB.get_pdata(), volumeB.nElements * sizeof(float));
+// 	return retVol;
+// }
 
 // multiplication operator
 volume& volume::operator *= (const float multVal)
@@ -136,15 +147,14 @@ volume& volume::operator *= (const float multVal)
 	return *this;
 }
 
-// division operator
-// volume volume::operator /(const float divVal)
-// {
-// 	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
-// 	for (unsigned int idx = 0; idx < this->nElements; idx++)
-// 		retVol.set_value(idx, this->data[idx] / divVal);
-// 	return retVol;
-// }
+volume volume::operator * (const float multVal) const
+{
+	volume retVol = *this;
+	retVol *= multVal;
+	return retVol;
+}
 
+// division operator
 volume& volume::operator /=(const float divVal)
 {
 	const float multVal = 1.0f / divVal; 
@@ -288,19 +298,7 @@ void volume::alloc_memory()
 {
 	// if any memory was allocated before, make sure to free it first
 	if (isMemAlloc)
-	{
-		delete[] data;
-		delete[] sliceX;
-		delete[] sliceY;
-		delete[] sliceZ;
-		delete[] mipX;
-		delete[] mipY;
-		delete[] mipZ;
-		delete[] croppedMipX;
-		delete[] croppedMipY;
-		delete[] croppedMipZ;
-	}
-
+		free_memory();
 
 	// allocate memory for data array	
 	data = new float[get_nElements()];
@@ -323,13 +321,18 @@ void volume::alloc_memory()
 	return;
 }
 
-// scales whole data array by a number (deprecated, will be removed soon)
-void volume::multiply(const float factor)
+void volume::free_memory()
 {
-	unsigned int nElements = dim[0] * dim[1] * dim[2];
-	for (unsigned int iElement = 0; iElement < nElements; iElement++)
-		data[iElement] *= factor;
-
+	delete[] data;
+	delete[] sliceX;
+	delete[] sliceY;
+	delete[] sliceZ;
+	delete[] mipX;
+	delete[] mipY;
+	delete[] mipZ;
+	delete[] croppedMipX;
+	delete[] croppedMipY;
+	delete[] croppedMipZ;
 	return;
 }
 
