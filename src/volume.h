@@ -42,8 +42,8 @@ private:
 	string outPath; // path pointing to our output file
 	string inPath; // path pointing to our input file
 
-	uint64_t dim[3] = {0, 0, 0}; // dimensionailty of volume
-	uint64_t nElements = 0; // overall number of elements in 
+	std::size_t dim[3] = {0, 0, 0}; // dimensionailty of volume
+	std::size_t nElements = 0; // overall number of elements in 
 	float origin[3] = {0, 0, 0}; // origin of volume
 	float res[3] = {1, 1, 1}; // resolution of volume
 
@@ -56,11 +56,11 @@ private:
 
 	// z slice array which will be only updated if new slice is requested
 	float* sliceZ; // indexing [iX, iY]
-	uint64_t lastSliceZ = 0;
+	std::size_t lastSliceZ = 0;
 	float* sliceX; // indexing [iZ, iY]
-	uint64_t lastSliceX = 0;
+	std::size_t lastSliceX = 0;
 	float* sliceY; // indexing [iX, iZ]
-	uint64_t lastSliceY = 0;
+	std::size_t lastSliceY = 0;
 
 	// maximum intensity projections
 	float* mipZ; // indexing: [iX, iY], iX + nX * iY
@@ -86,7 +86,7 @@ private:
 public:
 	// class constructor and destructor
 	volume(); // class constructor
-	volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2);
+	volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2);
 	~volume(); // class destructor
 
 	// copy constructor
@@ -102,7 +102,6 @@ public:
 
 	// multiplication operator
 	volume& operator *= (const float multVal);
-	// volume operator * (const float multVal);
 
 	// division operator
 	volume& operator /=(const float divVal);
@@ -117,6 +116,9 @@ public:
 
 	float operator[] (const std::size_t idx) const;
 
+	// return a 3d indexed element of the matrix
+	const float operator()(const std::size_t ix, const std::size_t iy, const std::size_t iz);
+
 	// important properties
 	float get_minVal() const {return minVal;};
 	float get_maxVal() const {return maxVal;};
@@ -126,57 +128,57 @@ public:
 	void multiply(const float factor); // multiplies all elements in volume with factor
 
 	// dimensionality of the dataset	
-	void set_dim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2);
-	void set_dim(const uint64_t* _dim);
-	void set_dim(const uint8_t _dim, const uint64_t newDim);
-	uint64_t get_dim(const uint8_t _dim) const; // returns dimension along axis
+	void set_dim(const std::size_t dim0, const std::size_t dim1, const std::size_t dim2);
+	void set_dim(const std::size_t* _dim);
+	void set_dim(const std::size_t _dim, const std::size_t newDim);
+	std::size_t get_dim(const std::size_t _dim) const; // returns dimension along axis
 
 	// define resolution of the dataset
 	void set_res(const float* dx);
 	void set_res(const float dx0, const float dx1, const float dx2);
-	void set_res(const uint8_t _dim, const float _res);
+	void set_res(const std::size_t _dim, const float _res);
 
 	// get resolution functions
-	float get_res(const uint8_t _dim) const {return res[_dim];};
+	float get_res(const std::size_t _dim) const {return res[_dim];};
 	float get_res0() const {return res[0];}; // get resolution along first dimension
 	float get_res1() const {return res[1];}; // get resolution along second dimension
 	float get_res2() const {return res[2];}; // get resolution along third dimension
 
 	// define origin of the dataset
 	void set_origin(const float* _origin);
-	void set_origin(const uint8_t _dim, const float _origin);
+	void set_origin(const std::size_t _dim, const float _origin);
 	void set_origin(const float origin0, const float origin1, const float origin2);
-	float get_origin(const uint8_t _dim) const {return origin[_dim];};
+	float get_origin(const std::size_t _dim) const {return origin[_dim];};
 
 	// different ways to define matrix elements
 	void set_value(const float value); // set whole array to certain value
-	void set_value(const uint64_t x0, const uint64_t x1, const uint64_t x2, const float value);
-	void set_value(const uint64_t* pos, const float value);
-	void set_value(const uint64_t iElem, const float value);
+	void set_value(const std::size_t x0, const std::size_t x1, const std::size_t x2, const float value);
+	void set_value(const std::size_t* pos, const float value);
+	void set_value(const std::size_t iElem, const float value);
 
 	// return the value of a certain position
-	float get_value(const uint64_t x0, const uint64_t x1, const uint64_t x2) const;
-	float get_value(const uint64_t iElem) const;
-	float get_value(const uint64_t* pos) const;
+	float get_value(const std::size_t x0, const std::size_t x1, const std::size_t x2) const;
+	float get_value(const std::size_t iElem) const;
+	float get_value(const std::size_t* pos) const;
 
 	// get position along axis
-	float get_pos0(const uint64_t idx0) const;
-	float get_pos1(const uint64_t idx1) const;
-	float get_pos2(const uint64_t idx2) const;
-	float get_pos(const uint64_t idx, const uint8_t iDim) const;
+	float get_pos0(const std::size_t idx0) const;
+	float get_pos1(const std::size_t idx1) const;
+	float get_pos2(const std::size_t idx2) const;
+	float get_pos(const std::size_t idx, const std::size_t iDim) const;
 
-	float get_centerPos(const uint8_t _dim); // returns center position along dimension
+	float get_centerPos(const std::size_t _dim); // returns center position along dimension
 
 	// get index of a certain position
-	uint64_t get_idx0(const float pos0) const;
-	uint64_t get_idx1(const float pos1) const;
-	uint64_t get_idx2(const float pos2) const;
-	uint64_t get_idx(const float pos, const uint8_t iDim) const;
+	std::size_t get_idx0(const float pos0) const;
+	std::size_t get_idx1(const float pos1) const;
+	std::size_t get_idx2(const float pos2) const;
+	std::size_t get_idx(const float pos, const std::size_t iDim) const;
 
-	float get_length(const uint8_t _dim) const; 
+	float get_length(const std::size_t _dim) const; 
 	// returns length of dataset along a certain dimension
 
-	uint64_t get_nElements() const;
+	std::size_t get_nElements() const;
 	void alloc_memory();
 
 	void readFromFile(const string _filePath); // read from file, distinguish type by ending
@@ -198,16 +200,16 @@ public:
 
 	void getCroppedVolume(
 		float* vol, // array containing cropped volume
-		const uint64_t start0, const uint64_t stop0,
-		const uint64_t start1, const uint64_t stop1,
-		const uint64_t start2, const uint64_t stop2) const;
+		const std::size_t start0, const std::size_t stop0,
+		const std::size_t start1, const std::size_t stop1,
+		const std::size_t start2, const std::size_t stop2) const;
 
 	void get_croppedVolume(
 		float* vol, // array containing cropped volume 
-		const uint64_t* startIdx, 
-		const uint64_t* stopIdx) const;
+		const std::size_t* startIdx, 
+		const std::size_t* stopIdx) const;
 
-	void crop(const uint64_t* startIdx, const uint64_t* stopIdx);
+	void crop(const std::size_t* startIdx, const std::size_t* stopIdx);
 
 	void exportVtk(const string filePath);
 
@@ -236,9 +238,9 @@ public:
 	void set_pdata(float* _data);
 
 	// get slices of volume
-	float* get_psliceZ(const uint64_t zLevel);
-	float* get_psliceX(const uint64_t xLevel);
-	float* get_psliceY(const uint64_t yLevel);
+	float* get_psliceZ(const std::size_t zLevel);
+	float* get_psliceX(const std::size_t xLevel);
+	float* get_psliceY(const std::size_t yLevel);
 	float* get_psliceZ(const float zPos);
 	float* get_psliceX(const float xPos);
 	float* get_psliceY(const float yPos);

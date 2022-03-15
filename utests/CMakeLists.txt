@@ -30,4 +30,8 @@ add_executable(UtestCrop utest_crop.cpp)
 target_link_libraries(UtestCrop PUBLIC Volume)
 add_test(NAME cvolume_crop COMMAND UtestCrop)
 
+add_executable(UtestMultoperator utest_multoperator.cpp)
+target_link_libraries(UtestMultoperator PUBLIC Volume)
+add_test(NAME cvolume_multoperator COMMAND UtestMultoperator)
+
 enable_testing()

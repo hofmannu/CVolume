@@ -6,7 +6,7 @@ volume::volume()
 	processor_count = std::thread::hardware_concurrency();
 }
 
-volume::volume(const uint64_t _dim0, const uint64_t _dim1, const uint64_t _dim2)
+volume::volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2)
 {
 	set_dim(_dim0, _dim1, _dim2);
 	alloc_memory();
@@ -56,7 +56,7 @@ bool volume::operator == (const volume& volumeB) const
 		throw "InvalidSize";
 	}
 
-	for (uint64_t iElement = 0; iElement < this->nElements; iElement++)
+	for (std::size_t iElement = 0; iElement < this->nElements; iElement++)
 	{
 		if (this->data[iElement] != volumeB.get_value(iElement))
 		{
@@ -77,7 +77,7 @@ bool volume::operator != (const volume& volumeB) const
 		throw "InvalidSize";
 	}
 
-	for (uint64_t iElement = 0; iElement < this->nElements; iElement++)
+	for (std::size_t iElement = 0; iElement < this->nElements; iElement++)
 	{
 		if (this->data[iElement] != volumeB.get_value(iElement))
 		{
@@ -90,13 +90,14 @@ bool volume::operator != (const volume& volumeB) const
 // sign constant value to all entries of data
 volume& volume::operator = (const float setVal)
 {
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] = setVal;
 	}
 	return *this;
 }
 
+// copy operator
 volume& volume::operator = (volume& volumeB)
 {
 	if (nElements == volumeB.get_nElements())
@@ -106,7 +107,7 @@ volume& volume::operator = (volume& volumeB)
 	else // size is different, lets first resize output volume 
 	{
 		#pragma unroll
-		for (uint64_t iDim = 0; iDim < 3; iDim++)
+		for (std::size_t iDim = 0; iDim < 3; iDim++)
 		{
 			this->set_dim(iDim, volumeB.get_dim(iDim));
 		}
@@ -116,7 +117,7 @@ volume& volume::operator = (volume& volumeB)
 
 	// push resolution and origin over
 	#pragma unroll
-	for (uint8_t iDim = 0; iDim < 3; iDim++)
+	for (std::size_t iDim = 0; iDim < 3; iDim++)
 	{
 		this->set_res(iDim, volumeB.get_res(iDim));
 		this->set_origin(iDim, volumeB.get_origin(iDim));
@@ -128,20 +129,12 @@ volume& volume::operator = (volume& volumeB)
 // multiplication operator
 volume& volume::operator *= (const float multVal)
 {
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] =	this->data[iElem] * multVal;
 	}
 	return *this;
 }
-
-// volume volume::operator *(const float multVal)
-// {
-// 	volume retVol(this->dim[0], this->dim[1], this->dim[2]);
-// 	for (unsigned int idx = 0; idx < this->nElements; idx++)
-// 		retVol.set_value(idx, this->data[idx] * multVal);
-// 	return retVol;
-// }
 
 // division operator
 // volume volume::operator /(const float divVal)
@@ -155,7 +148,7 @@ volume& volume::operator *= (const float multVal)
 volume& volume::operator /=(const float divVal)
 {
 	const float multVal = 1.0f / divVal; 
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] =	this->data[iElem] * multVal;
 	}
@@ -172,7 +165,7 @@ volume& volume::operator +=(const volume& volumeB)
 		throw "InvalidSize";
 	}
 
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] = this->data[iElem] + volumeB[iElem];
 	}
@@ -189,7 +182,7 @@ volume& volume::operator -=(const volume& volumeB)
 		throw "InvalidSize";
 	}
 
-	for (uint64_t iElem = 0; iElem < this->nElements; iElem++)
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] = this->data[iElem] - volumeB[iElem];
 	}
@@ -202,20 +195,24 @@ float volume::operator[] (const std::size_t idx) const
 	return *(data + idx);
 }
 
+const float volume::operator()(const std::size_t ix, const std::size_t iy, const std::size_t iz)
+{
+	return get_value(ix, iy, iz);
+}
+
 // get pointer to slice with z as normal
-float* volume::get_psliceZ(const uint64_t zLevel)
+float* volume::get_psliceZ(const std::size_t zLevel)
 {
 	if (zLevel != lastSliceZ)
 	{
 		lastSliceZ = zLevel;
 		// update slice
-		for (uint64_t ix = 0; ix < dim[0]; ix++)
+		for (std::size_t ix = 0; ix < dim[0]; ix++)
 		{
-			for (uint64_t iy = 0; iy < dim[1]; iy++)
+			for (std::size_t iy = 0; iy < dim[1]; iy++)
 			{
-				const uint64_t sliceIdx = ix + iy * dim[0];
-				const uint64_t volIdx = ix + dim[0] * (iy + dim[1] * zLevel);
-				sliceZ[sliceIdx] = data[volIdx];
+				const std::size_t sliceIdx = ix + iy * dim[0];
+				sliceZ[sliceIdx] = get_value(ix, iy, zLevel);
 			}
 		}
 	}
@@ -224,20 +221,18 @@ float* volume::get_psliceZ(const uint64_t zLevel)
 }
 
 // get pointer to slice with x as normal
-float* volume::get_psliceX(const uint64_t xLevel)
+float* volume::get_psliceX(const std::size_t xLevel)
 {
 	if (xLevel != lastSliceX)
 	{
 		lastSliceX = xLevel;
 		// update slice
-		for (uint64_t iz = 0; iz < dim[2]; iz++)
+		for (std::size_t iz = 0; iz < dim[2]; iz++)
 		{
-			for (uint64_t iy = 0; iy < dim[1]; iy++)
+			for (std::size_t iy = 0; iy < dim[1]; iy++)
 			{
-				const uint64_t sliceIdx = iz + iy * dim[2];
-				const uint64_t volIdx = xLevel + dim[0] * (iy + dim[1] * iz);
-
-				sliceX[sliceIdx] = data[volIdx];
+				const std::size_t sliceIdx = iz + iy * dim[2];
+				sliceX[sliceIdx] = get_value(xLevel, iy, iz);
 			}
 		}
 	}
@@ -246,19 +241,18 @@ float* volume::get_psliceX(const uint64_t xLevel)
 }
 
 // get pointer to slice with y as normal
-float* volume::get_psliceY(const uint64_t yLevel)
+float* volume::get_psliceY(const std::size_t yLevel)
 {
 	if (yLevel != lastSliceY)
 	{
 		lastSliceY = yLevel;
 		// update slice
-		for (uint64_t iz = 0; iz < dim[2]; iz++)
+		for (std::size_t iz = 0; iz < dim[2]; iz++)
 		{
-			for (uint64_t ix = 0; ix < dim[0]; ix++)
+			for (std::size_t ix = 0; ix < dim[0]; ix++)
 			{
-				const uint64_t sliceIdx = ix + iz * dim[0];
-				const uint64_t volIdx = ix + dim[0] * (yLevel + dim[1] * iz);
-				sliceY[sliceIdx] = data[volIdx];
+				const std::size_t sliceIdx = ix + iz * dim[0];
+				sliceY[sliceIdx] = get_value(ix, yLevel, iz);
 			}
 		}
 	}
@@ -285,7 +279,7 @@ float* volume::get_psliceY(const float yPos)
 	return get_psliceY(yIdx);
 }
 
-float volume::get_length(const uint8_t _dim) const
+float volume::get_length(const std::size_t _dim) const
 {
 	return (float) dim[_dim] * res[_dim];
 }
@@ -309,8 +303,7 @@ void volume::alloc_memory()
 
 
 	// allocate memory for data array	
-	uint64_t nElements = dim[0] * dim[1] * dim[2];
-	data = new float[nElements];
+	data = new float[get_nElements()];
 	
 	// allocate memory for crosssections
 	sliceZ = new float [dim[0] * dim[1]]; 
@@ -341,7 +334,7 @@ void volume::multiply(const float factor)
 }
 
 // define dimensions of dataset
-void volume::set_dim(const uint64_t dim0, const uint64_t dim1, const uint64_t dim2)
+void volume::set_dim(const std::size_t dim0, const std::size_t dim1, const std::size_t dim2)
 {
 	dim[0] = dim0;
 	dim[1] = dim1;
@@ -350,20 +343,20 @@ void volume::set_dim(const uint64_t dim0, const uint64_t dim1, const uint64_t di
 	return;
 }
 
-void volume::set_dim(const uint64_t* _dim)
+void volume::set_dim(const std::size_t* _dim)
 {
 	set_dim(_dim[0], _dim[1], _dim[2]);
 	return;
 }
 
-void volume::set_dim(const uint8_t _dim, const uint64_t newDim)
+void volume::set_dim(const std::size_t _dim, const std::size_t newDim)
 {
 	dim[_dim] = newDim;
 	nElements = dim[0] * dim[1] * dim[2];
 	return;
 }
 
-uint64_t volume::get_dim(const uint8_t _dim) const
+uint64_t volume::get_dim(const std::size_t _dim) const
 {
 	return dim[_dim];
 }
@@ -385,7 +378,7 @@ void volume::set_origin(const float origin0, const float origin1, const float or
 	return;
 }
 
-void volume::set_origin(const uint8_t _dim, const float _origin)
+void volume::set_origin(const std::size_t _dim, const float _origin)
 {
 	origin[_dim] = _origin;
 	return;
@@ -409,7 +402,7 @@ void volume::set_res(const float dx0, const float dx1, const float dx2)
 	return;
 }
 
-void volume::set_res(const uint8_t _dim, const float _res)
+void volume::set_res(const std::size_t _dim, const float _res)
 {
 	if (_res <= 0)
 	{
@@ -424,8 +417,7 @@ void volume::set_res(const uint8_t _dim, const float _res)
 // sets whole array to a certain value
 void volume::set_value(const float value)
 {
-	unsigned int nElements = dim[0] * dim[1] * dim[2];
-	for (unsigned int iElement = 0; iElement < nElements; iElement++)
+	for (unsigned int iElement = 0; iElement < get_nElements(); iElement++)
 		data[iElement] = value;
 
 	return;
@@ -433,64 +425,64 @@ void volume::set_value(const float value)
 
 // set only one specific value in volume defined by index
 void volume::set_value(
-	const uint64_t x0, const uint64_t x1, const uint64_t x2, const float value)
+	const std::size_t x0, const std::size_t x1, const std::size_t x2, const float value)
 {
 	unsigned int index = x0 + dim[0] * (x1 + x2 * dim[1]);
 	data[index] = value;
 	return;
 }
 
-void volume::set_value(const uint64_t iElem, const float value)
+void volume::set_value(const std::size_t iElem, const float value)
 {
 	data[iElem] = value;
 	return;
 }
 
 // set only one specific value in volume
-void volume::set_value(const uint64_t* pos, const float value)
+void volume::set_value(const std::size_t* pos, const float value)
 {
-	uint64_t index = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
+	std::size_t index = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
 	data[index] = value;
 	return;
 }
 
-float volume::get_value(const uint64_t x0, const uint64_t x1, const uint64_t x2) const
+float volume::get_value(const std::size_t x0, const std::size_t x1, const std::size_t x2) const
 {
-	const uint64_t idx = x0 + dim[0] * (x1 + x2 * dim[1]);
+	const std::size_t idx = x0 + dim[0] * (x1 + x2 * dim[1]);
 	return data[idx];
 }
 
-float volume::get_value(const uint64_t iElem) const {return data[iElem];}
+float volume::get_value(const std::size_t iElem) const {return data[iElem];}
 
 // pass position as a 3 element vector to indices
-float volume::get_value(const uint64_t* pos) const
+float volume::get_value(const std::size_t* pos) const
 {
 	const unsigned int idx = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
 	return data[idx];
 }
 
 // get position along axis
-float volume::get_pos0(const uint64_t idx0) const
+float volume::get_pos0(const std::size_t idx0) const
 {
 	return get_pos(idx0, 0);
 }
 
-float volume::get_pos1(const uint64_t idx1) const
+float volume::get_pos1(const std::size_t idx1) const
 {
 	return get_pos(idx1, 1);
 }
 
-float volume::get_pos2(const uint64_t idx2) const
+float volume::get_pos2(const std::size_t idx2) const
 {
 	return get_pos(idx2, 2);
 }
 
-float volume::get_pos(const uint64_t idx, const uint8_t iDim) const
+float volume::get_pos(const std::size_t idx, const std::size_t iDim) const
 {
 	return origin[iDim] + (float) idx * res[iDim];
 }
 
-float volume::get_centerPos(const uint8_t _dim)
+float volume::get_centerPos(const std::size_t _dim)
 {
 	const float centerPos = origin[_dim] + ((float) dim[_dim] * res[_dim]) / 2;
 	return centerPos;
@@ -501,14 +493,16 @@ uint64_t volume::get_idx0(const float pos0) const {return get_idx(pos0, 0);}
 uint64_t volume::get_idx1(const float pos1) const {return get_idx(pos1, 1);}
 uint64_t volume::get_idx2(const float pos2) const {return get_idx(pos2, 2);}
 
-uint64_t volume::get_idx(const float pos, const uint8_t iDim) const
+uint64_t volume::get_idx(const float pos, const std::size_t iDim) const
 {
-	if (pos < origin[iDim]){
+	if (pos < origin[iDim])
+	{
 		printf("[volume] hitting lower boundary of volume along dim %d\n", iDim);
 		return 0;
 	}
-	else{
-		const unsigned int outputIdx = (pos - origin[iDim]) / res[iDim] + 0.5;
+	else
+	{
+		const std::size_t outputIdx = (pos - origin[iDim]) / res[iDim] + 0.5;
 		if (outputIdx > (dim[iDim] - 1)){
 			printf("[volume] hitting upper boundary of volume along dim %d\n", iDim);
 			return dim[iDim] - 1;
@@ -518,7 +512,7 @@ uint64_t volume::get_idx(const float pos, const uint8_t iDim) const
 	}
 }
 
-uint64_t volume::get_nElements() const
+std::size_t volume::get_nElements() const
 {
 	return dim[0] * dim[1] * dim[2];
 }
@@ -1405,9 +1399,10 @@ void volume::normalize()
 	const float normVal = getNorm(data, nElements);
 	if (normVal > 0)
 	{
+		const float rnormVal = 1.0f / normVal;
 		for (uint64_t iElem = 0; iElem < nElements; iElem++)
 		{
-			data[iElem] = data[iElem] / normVal;
+			data[iElem] = data[iElem] * rnormVal;
 		}
 	}
 	return;
@@ -1437,10 +1432,11 @@ void volume::fill_rand(const float maxVal)
 void volume::fill_rand(const float minVal, const float maxVal)
 {
 	srand(time(0));
+	const float irmax = 1.0f / ((float) RAND_MAX);
 	#pragma unroll
 	for (uint64_t iElem = 0; iElem < nElements; iElem++)
 	{
-		const float randVal = (float) rand() / (float) RAND_MAX;
+		const float randVal = ((float) rand()) * irmax;
 		data[iElem] = (randVal * (maxVal - minVal)) - minVal; 
 	}
 	return;
