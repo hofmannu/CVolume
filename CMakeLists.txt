@@ -27,6 +27,13 @@ add_test(NAME cvolume_arrayops COMMAND UtestArrayops)
 add_test(NAME cvolume_pos COMMAND UtestPositions)
 add_test(NAME cvolume_setget COMMAND UtestSetGet)
 add_test(NAME cvolume_constructor COMMAND UtestConstructor)
+
+# all the different overload operators are tested here
 add_test(NAME cvolume_multoperator COMMAND UtestMultoperator)
+add_test(NAME cvolume_addoperator COMMAND UtestAddoperator)
+add_test(NAME cvolume_subsoperator COMMAND UtestSubsoperator)
+add_test(NAME cvolume_divoperator COMMAND UtestDivoperator)
+
+add_test(NAME cvolume_bracketmagic COMMAND UtestBracketmagic)
 
 enable_testing()

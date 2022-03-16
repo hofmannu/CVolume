@@ -104,20 +104,29 @@ public:
 
 	// multiplication operator
 	volume& operator *= (const float multVal);
+	volume& operator *=(const volume& volumeB);
 	volume operator *(const float multVal) const;
+	volume operator *(const volume& volumeB) const;
 
 	// division operator
-	volume& operator /=(const float divVal);
-	volume operator /(const float divVal);
-	// volume& operator /(const volume& inVol, const float divVal);
+	volume& operator /= (const float divVal);
+	volume& operator /= (const volume& volumeB);
+	volume operator / (const float divVal) const;
+	volume operator / (const volume& volumeB) const;
 
 	// addition operator
 	volume& operator += (const volume& volumeB);
+	volume& operator += (const float addVal);
+	volume operator + (const float addVal) const;
+	volume operator + (const volume& volumeB) const;
 
 	// substraction operator
 	volume& operator -= (const volume& volumeB);
-	// volume operator -(const volume& volumeB);
+	volume& operator -= (const float subsVal);
+	volume operator -(const float subsVal) const;
+	volume operator -(const volume& volumeB) const;
 
+	float& operator[] (const std::size_t idx);
 	float operator[] (const std::size_t idx) const;
 
 	// return a 3d indexed element of the matrix
@@ -127,7 +136,6 @@ public:
 	float get_minVal() const {return minVal;};
 	float get_maxVal() const {return maxVal;};
 	float get_maxAbsVal() const {return maxAbsVal;};
-
 
 	// dimensionality of the dataset	
 	void set_dim(const std::size_t dim0, const std::size_t dim1, const std::size_t dim2);
@@ -181,8 +189,8 @@ public:
 	// returns length of dataset along a certain dimension
 
 	std::size_t get_nElements() const;
-	void alloc_memory();
-	void free_memory();
+	void alloc_memory(); // allocates the memory of our array and slices
+	void free_memory(); // frees the memory of our arrays and slices
 
 	void readFromFile(const string _filePath); // read from file, distinguish type by ending
 	void saveToFile(const string _filePath) const; // save to file, distinguish type by ending

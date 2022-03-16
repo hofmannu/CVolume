@@ -1,11 +1,13 @@
 #include "volume.h"
 
+// default empty constructor
 volume::volume()
 {
 	className = "volume";
 	processor_count = std::thread::hardware_concurrency();
 }
 
+// constructor to initialize volume with dimensions
 volume::volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2)
 {
 	set_dim(_dim0, _dim1, _dim2);
@@ -36,7 +38,7 @@ volume::volume(const volume& obj)
 	return;
 }
 
-// equal and not equal operators
+// equal operator
 bool volume::operator == (const volume& volumeB) const
 {
 	bool isSame = 1;
@@ -58,6 +60,7 @@ bool volume::operator == (const volume& volumeB) const
 	return isSame;
 }
 
+// not equal operator
 bool volume::operator != (const volume& volumeB) const
 {
 	bool isSame = 1;
@@ -89,10 +92,9 @@ void volume::operator = (const float setVal)
 	return;
 }
 
-// copy operator
+// assignment operator
 void volume::operator = (const volume& volumeB)
 {
-	printf("calling normal copy operator");
 	if (nElements == volumeB.get_nElements())
 	{
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
@@ -119,24 +121,6 @@ void volume::operator = (const volume& volumeB)
 	return;
 }
 
-// volume volume::operator = (const volume& volumeB)
-// {
-// 	printf("Calling deep copy assignment operator\n");
-
-// 	volume retVol;
-// 	#pragma unroll
-// 	for (std::size_t iDim = 0; iDim < 3; iDim++)
-// 	{
-// 		retVol.set_res(iDim, volumeB.get_res(iDim));
-// 		retVol.set_origin(iDim, volumeB.get_origin(iDim));
-// 		retVol.set_dim(iDim, volumeB.get_dim(iDim));
-// 	}
-
-// 	retVol.alloc_memory();
-// 	memcpy(retVol.get_pdata(), volumeB.get_pdata(), volumeB.nElements * sizeof(float));
-// 	return retVol;
-// }
-
 // multiplication operator
 volume& volume::operator *= (const float multVal)
 {
@@ -149,8 +133,27 @@ volume& volume::operator *= (const float multVal)
 
 volume volume::operator * (const float multVal) const
 {
-	volume retVol = *this;
+	volume retVol = *this; // generate a copy of local volume
 	retVol *= multVal;
+	return retVol;
+}
+
+volume volume::operator * (const volume& volumeB) const
+{
+	// check that both volumes have the same number
+	if (volumeB.get_nElements() != this->get_nElements())
+	{
+		printf("Volumes need to have the same number of elements to be multiplied");
+		throw "InvalidSize";
+	}
+
+	volume retVol(this->get_dim(0), this->get_dim(1), this->get_dim(2));
+
+	for (std::size_t iElem = 0; iElem < this->get_nElements(); iElem++)
+	{
+		retVol[iElem] = this->get_value(iElem) * volumeB.get_value(iElem);
+	}
+
 	return retVol;
 }
 
@@ -163,10 +166,48 @@ volume& volume::operator /=(const float divVal)
 		this->data[iElem] =	this->data[iElem] * multVal;
 	}
 	return *this;
+}
 
+volume& volume::operator /=(const volume& volumeB)
+{
+	if (volumeB.get_nElements() != this->get_nElements())
+	{
+		printf("Volumes need to have the same number of elements to be multiplied");
+		throw "InvalidSize";
+	}
+
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] =	this->data[iElem] / volumeB[iElem];
+	}
+	return *this;
+}
+
+volume volume::operator / (const float divVal) const
+{
+	volume retVol = *this; // generate a copy of local volume
+	const float multVal = 1 / divVal;
+	retVol *= multVal;
+	return retVol;
+}
+
+volume volume::operator / (const volume& volumeB) const
+{
+	volume retVol = *this;
+	retVol /= volumeB;
+	return retVol;
 }
 
 // addition operator
+volume& volume::operator +=(const float addVal)
+{
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		this->data[iElem] = this->data[iElem] + addVal;
+	}
+	return *this;
+}
+
 volume& volume::operator +=(const volume& volumeB)
 {
 	if (this->nElements != volumeB.get_nElements())
@@ -181,6 +222,20 @@ volume& volume::operator +=(const volume& volumeB)
 	}
 
 	return *this;
+}
+
+volume volume::operator +(const float addVal) const
+{
+	volume retVol = *this;
+	retVol += addVal;
+	return retVol;
+}
+
+volume volume::operator +(const volume& volumeB) const
+{
+	volume retVol = *this;
+	retVol += volumeB;
+	return retVol;
 }
 
 // substraction operator
@@ -200,10 +255,41 @@ volume& volume::operator -=(const volume& volumeB)
 	return *this;
 }
 
-float volume::operator[] (const std::size_t idx) const
+volume& volume::operator -=(const float subsVal)
+{
+	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
+	{
+		data[iElem] = this->data[iElem] - subsVal;
+	}
+	return *this;
+}
+
+volume volume::operator -(const float subsVal) const
+{
+	volume retVol = *this;
+	retVol -= subsVal;
+	return retVol;
+}
+
+volume volume::operator -(const volume& volumeB) const
+{
+	volume retVol = *this;
+	retVol -= volumeB;
+	return retVol;
+}
+
+// this version is used to set a value (therefore not labeled as const)
+float& volume::operator[] (const std::size_t idx) 
 {
 	return *(data + idx);
 }
+
+// this version is used to get a value (quite a constant thing to do)
+float volume::operator[] (const std::size_t idx) const 
+{
+	return *(data + idx);
+}
+
 
 const float volume::operator()(const std::size_t ix, const std::size_t iy, const std::size_t iz)
 {
@@ -294,6 +380,7 @@ float volume::get_length(const std::size_t _dim) const
 	return (float) dim[_dim] * res[_dim];
 }
 
+// allocate memory
 void volume::alloc_memory()
 {
 	// if any memory was allocated before, make sure to free it first
@@ -321,6 +408,7 @@ void volume::alloc_memory()
 	return;
 }
 
+// free all arrays and release memory
 void volume::free_memory()
 {
 	delete[] data;
@@ -415,7 +503,6 @@ void volume::set_res(const std::size_t _dim, const float _res)
 	res[_dim] = _res;
 	return;
 }
-
 
 // sets whole array to a certain value
 void volume::set_value(const float value)

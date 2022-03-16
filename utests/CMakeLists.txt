@@ -25,3 +25,14 @@ target_link_libraries(UtestCrop PUBLIC Volume)
 add_executable(UtestMultoperator utest_multoperator.cpp)
 target_link_libraries(UtestMultoperator PUBLIC Volume)
 
+add_executable(UtestAddoperator utest_addoperator.cpp)
+target_link_libraries(UtestAddoperator PUBLIC Volume)
+
+add_executable(UtestSubsoperator utest_subsoperator.cpp)
+target_link_libraries(UtestSubsoperator PUBLIC Volume)
+
+add_executable(UtestDivoperator utest_divoperator.cpp)
+target_link_libraries(UtestDivoperator PUBLIC Volume)
+
+add_executable(UtestBracketmagic utest_bracketmagic.cpp)
+target_link_libraries(UtestBracketmagic PUBLIC Volume)
