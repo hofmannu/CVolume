@@ -23,6 +23,7 @@
 #include <time.h>
 #include <thread>
 #include <pthread.h>
+#include <vector>
 #include <cstdlib>
 #include "baseClass.h"
 #include <H5Cpp.h>
@@ -30,6 +31,7 @@
 #include "vtkwriter.h"
 #include "griddedData.h"
 #include "../lib/nifti/niftilib/nifti1.h"
+
 
 #define MIN_HEADER_SIZE 348
 #define NII_HEADER_SIZE 352
@@ -48,7 +50,7 @@ private:
 
 	float minVal = 0; // minimum value in full dataset
 	float maxVal = 0; // maximum value in full dataset
-	float maxAbsVal = 0;
+	float maxAbsVal = 0; // absolute maximum value in full dataset
 
 	float* data; // matrix containing data
 	bool isMemAlloc = 0; // did we allocate memory
@@ -78,6 +80,8 @@ private:
 	float maxValCrop = 0;
 
 	int processor_count = 1; // variable containing the number of CPU processing units
+	
+	vector<std::thread> workers;
 
 	nifti_1_header hdr;
 
@@ -90,6 +94,8 @@ public:
 
 	// copy constructor
 	volume(const volume& obj);
+
+	void construct(); // common tasks for all constructor types
 
 	// check if volumes are the same or not the same
 	bool operator == (const volume& volumeB) const;

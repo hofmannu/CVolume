@@ -6,23 +6,35 @@
 */
 
 #include "../src/volume.h"
+#include <chrono>
 
 int main()
 {
-	std::size_t nElements = 110 * 110 * 110;
-	volume volA(110, 110, 110);
+	std::size_t nX = 200;
+	std::size_t nY = 210;
+	std::size_t nZ = 220;
+
+	std::size_t nElements = nX * nY * nZ;
+	volume volA(nX, nY, nZ);
 	volA.fill_rand(-1.0f, 1.0f);
-	volume volB(100, 100, 100);
+	volume volB(nX, nY, nZ);
 	volB.fill_rand(-1.0f, 1.0f);
 
 	// test relative multiplication operator
 	float backup = volB[10];
+
+	const auto tStart = std::chrono::high_resolution_clock::now();
 	volB *= 2.0f;
+	const auto tStop = std::chrono::high_resolution_clock::now();
+	
 	if ((backup * 2.0f) != volB[10])
 	{
 		printf("something went wrong during shallow multiplication\n");
 		throw "InvalidValue";
 	}
+	
+	const float tDuration = std::chrono::duration_cast<std::chrono::milliseconds>(tStop - tStart).count();
+	printf("Execution time was %.2f ms\n", tDuration);
 
 	volB = 0;
 

@@ -36,4 +36,6 @@ add_test(NAME cvolume_divoperator COMMAND UtestDivoperator)
 
 add_test(NAME cvolume_bracketmagic COMMAND UtestBracketmagic)
 
+add_test(NAME cvolume_minmax COMMAND UtestMinMax)
+
 enable_testing()

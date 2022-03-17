@@ -3,13 +3,15 @@
 // default empty constructor
 volume::volume()
 {
-	className = "volume";
-	processor_count = std::thread::hardware_concurrency();
+	construct();
+	
 }
 
 // constructor to initialize volume with dimensions
 volume::volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2)
 {
+	construct();
+	
 	set_dim(_dim0, _dim1, _dim2);
 	alloc_memory();
 	volume();
@@ -26,6 +28,7 @@ volume::~volume()
 // copy constructor (this is new instance, obj is the one we copy from
 volume::volume(const volume& obj)
 {
+	construct();
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		this->set_dim(iDim, obj.get_dim(iDim));
@@ -38,6 +41,13 @@ volume::volume(const volume& obj)
 
 	this->alloc_memory();
 	memcpy(this->data, obj.get_pdata(), this->nElements * sizeof(float));
+	return;
+}
+
+void volume::construct()
+{
+	className = "volume";
+	processor_count = std::thread::hardware_concurrency();
 	return;
 }
 
@@ -82,6 +92,7 @@ bool volume::operator != (const volume& volumeB) const
 			isSame = 0;
 		}
 	}
+
 	return (!isSame);
 }
 
@@ -127,13 +138,36 @@ void volume::operator = (const volume& volumeB)
 	return;
 }
 
+// helper functions for thread execution of multiplication
+void rangeMult(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx, 
+	const float multVal)
+{
+	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
+	{
+		arrayIn[idx] *= multVal;
+	}
+	return;
+}
+
 // multiplication operator
 volume& volume::operator *= (const float multVal)
 {
-	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
+	std::size_t nElementsThread = get_nElements() / processor_count;
+	workers.clear();
+
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
 	{
-		this->data[iElem] =	this->data[iElem] * multVal;
+		const std::size_t startIdx = iThread * nElementsThread;
+		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
+			(iThread + 1) * nElementsThread - 1 :
+			get_nElements() - 1;
+		thread currThread(&rangeMult, this->data, startIdx, stopIdx, multVal);
+		workers.push_back(std::move(currThread));
 	}
+
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
+		workers[iThread].join();
+
 	return *this;
 }
 
@@ -144,6 +178,7 @@ volume volume::operator * (const float multVal) const
 	return retVol;
 }
 
+// TODO: push to multithread
 volume volume::operator * (const volume& volumeB) const
 {
 	// check that both volumes have the same number
@@ -155,6 +190,7 @@ volume volume::operator * (const volume& volumeB) const
 
 	volume retVol(this->get_dim(0), this->get_dim(1), this->get_dim(2));
 
+
 	for (std::size_t iElem = 0; iElem < this->get_nElements(); iElem++)
 	{
 		retVol[iElem] = this->get_value(iElem) * volumeB.get_value(iElem);
@@ -163,14 +199,11 @@ volume volume::operator * (const volume& volumeB) const
 	return retVol;
 }
 
-// division operator
+// division operator (redirection to *=)
 volume& volume::operator /=(const float divVal)
 {
 	const float multVal = 1.0f / divVal; 
-	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
-	{
-		this->data[iElem] =	this->data[iElem] * multVal;
-	}
+	*this *= multVal;
 	return *this;
 }
 
@@ -205,15 +238,38 @@ volume volume::operator / (const volume& volumeB) const
 }
 
 // addition operator
+void rangeAdd(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx, 
+	const float addVal)
+{
+	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
+	{
+		arrayIn[idx] += addVal;
+	}
+	return;
+}
+
 volume& volume::operator +=(const float addVal)
 {
-	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
+	std::size_t nElementsThread = get_nElements() / processor_count;
+	workers.clear();
+
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
 	{
-		this->data[iElem] = this->data[iElem] + addVal;
+		const std::size_t startIdx = iThread * nElementsThread;
+		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
+			(iThread + 1) * nElementsThread - 1 :
+			get_nElements() - 1;
+		thread currThread(&rangeAdd, this->data, startIdx, stopIdx, addVal);
+		workers.push_back(std::move(currThread));
 	}
+
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
+		workers[iThread].join();
+
 	return *this;
 }
 
+// TODO: make this execution multithread
 volume& volume::operator +=(const volume& volumeB)
 {
 	if (this->nElements != volumeB.get_nElements())
@@ -230,6 +286,7 @@ volume& volume::operator +=(const volume& volumeB)
 	return *this;
 }
 
+// redirection to += operator
 volume volume::operator +(const float addVal) const
 {
 	volume retVol = *this;
@@ -263,17 +320,14 @@ volume& volume::operator -=(const volume& volumeB)
 
 volume& volume::operator -=(const float subsVal)
 {
-	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
-	{
-		data[iElem] = this->data[iElem] - subsVal;
-	}
+	*this += (-subsVal);
 	return *this;
 }
 
 volume volume::operator -(const float subsVal) const
 {
 	volume retVol = *this;
-	retVol -= subsVal;
+	retVol += (-subsVal);
 	return retVol;
 }
 
@@ -1060,6 +1114,16 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 // calculates maximum and minimum value in matrix
 void volume::calcMinMax()
 {
+	
+	const std::size_t nElementsThread = get_nElements() / processor_count;
+	workers.clear();
+
+	for (uint8_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+	{
+		
+	}
+
+
 	minVal = getMin(data, nElements);
 	maxVal = getMax(data, nElements);
 
@@ -1533,7 +1597,7 @@ void volume::fill_rand(const float minVal, const float maxVal)
 	for (uint64_t iElem = 0; iElem < nElements; iElem++)
 	{
 		const float randVal = ((float) rand()) * irmax;
-		data[iElem] = (randVal * (maxVal - minVal)) - minVal; 
+		data[iElem] = (randVal * (maxVal - minVal)) + minVal; 
 	}
 	return;
 }

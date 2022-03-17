@@ -36,3 +36,6 @@ target_link_libraries(UtestDivoperator PUBLIC Volume)
 
 add_executable(UtestBracketmagic utest_bracketmagic.cpp)
 target_link_libraries(UtestBracketmagic PUBLIC Volume)
+
+add_executable(UtestMinMax utest_minmax.cpp)
+target_link_libraries(UtestMinMax PUBLIC Volume)
