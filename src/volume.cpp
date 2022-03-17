@@ -33,6 +33,9 @@ volume::volume(const volume& obj)
 		this->res[iDim] = obj.get_res(iDim);
 	}
 
+	this->minVal = obj.minVal;
+	this->maxVal = obj.maxVal;
+
 	this->alloc_memory();
 	memcpy(this->data, obj.get_pdata(), this->nElements * sizeof(float));
 	return;
@@ -117,6 +120,9 @@ void volume::operator = (const volume& volumeB)
 		this->set_res(iDim, volumeB.get_res(iDim));
 		this->set_origin(iDim, volumeB.get_origin(iDim));
 	}
+
+	this->minVal = volumeB.get_minVal();
+	this->maxVal = volumeB.get_maxVal();
 
 	return;
 }
