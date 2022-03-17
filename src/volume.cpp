@@ -1111,6 +1111,24 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 	return;
 }
 
+void rangeMinMax(const float* data, const std::size_t startIdx, const std::size_t stopIdx,
+	float* localMin, float* localMax)
+{
+	*localMin = data[startIdx];
+	*localMax = data[stopIdx];
+
+	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
+	{
+		if (*localMin > data[idx])
+			*localMin = data[idx];
+
+		if (*localMax < data[idx])
+			*localMax = data[idx];
+	}
+
+	return;
+}
+
 // calculates maximum and minimum value in matrix
 void volume::calcMinMax()
 {
@@ -1118,14 +1136,34 @@ void volume::calcMinMax()
 	const std::size_t nElementsThread = get_nElements() / processor_count;
 	workers.clear();
 
-	for (uint8_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+	float* localMin = new float [processor_count];
+	float* localMax = new float [processor_count];
+
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
 	{
-		
+		const std::size_t startIdx = iThread * nElementsThread;
+		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
+			(iThread + 1) * nElementsThread - 1 :
+			get_nElements() - 1;
+		thread currThread(
+			&rangeMinMax, data, startIdx, stopIdx, &localMin[iThread], &localMax[iThread]);
+		workers.push_back(std::move(currThread));
 	}
 
+	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
+		workers[iThread].join();
 
-	minVal = getMin(data, nElements);
-	maxVal = getMax(data, nElements);
+	// convert global to local max and min
+	minVal = localMin[0];
+	maxVal = localMax[0];
+	for (uint8_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+	{
+		if (minVal > localMin[iProcessor])
+			minVal = localMin[iProcessor];
+
+		if (maxVal < localMax[iProcessor])
+			maxVal = localMax[iProcessor];  
+	}
 
 	if (abs(minVal) > abs(maxVal))
 	{
@@ -1135,6 +1173,9 @@ void volume::calcMinMax()
 	{
 		maxAbsVal = abs(maxVal);
 	}
+
+	delete[] localMin;
+	delete[] localMax;
 	return;
 }
 
