@@ -1,4 +1,5 @@
 #include "volume.h"
+#include <cassert>
 
 // default empty constructor
 volume::volume() : baseClass("volume"), processor_count(std::thread::hardware_concurrency())
@@ -31,71 +32,44 @@ volume::volume(const volume& obj) : volume()
 	this->maxVal = obj.maxVal;
 
 	this->alloc_memory();
-	memcpy(this->data, obj.get_pdata(), this->nElements * sizeof(float));
+	memcpy(this->data.data(), obj.get_pdata(), this->nElements * sizeof(float));
 	return;
 }
 
-// class destructor
-volume::~volume()
-{
-	// if memory was allocated in data, release now
-	if (isMemAlloc)
-		free_memory();
-}
 
 // equal operator
 bool volume::operator == (const volume& volumeB) const
 {
-	bool isSame = 1;
-
 	// check if number of elements is the same
 	if (this->nElements != volumeB.get_nElements())
 	{
 		printf("Arrays need to have the same size for this operation\n");
-		throw "InvalidSize";
+		throw std::runtime_error("InvalidSize");
 	}
 
 	for (std::size_t iElement = 0; iElement < this->nElements; iElement++)
 	{
 		if (this->data[iElement] != volumeB.get_value(iElement))
 		{
-			isSame = 0;
+			return false;
 		}
 	}
-	return isSame;
+	return true;
 }
 
 // not equal operator
 bool volume::operator != (const volume& volumeB) const
 {
-	bool isSame = 1;
-
-	// check if number of elements is the same
-	if (this->nElements != volumeB.get_nElements())
-	{
-		printf("Arrays need to have the same size for this operation\n");
-		throw "InvalidSize";
-	}
-
-	for (std::size_t iElement = 0; iElement < this->nElements; iElement++)
-	{
-		if (this->data[iElement] != volumeB.get_value(iElement))
-		{
-			isSame = 0;
-		}
-	}
-
-	return (!isSame);
+	return (this->operator==(volumeB) == false);
 }
 
-// sign constant value to all entries of data, origin, and resolution
+
 void volume::operator = (const float setVal)
 {
 	for (std::size_t iElem = 0; iElem < this->nElements; iElem++)
 	{
 		this->data[iElem] = setVal;
 	}
-	return;
 }
 
 // assignment operator
@@ -103,7 +77,7 @@ void volume::operator = (const volume& volumeB)
 {
 	if (nElements == volumeB.get_nElements())
 	{
-		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
+		memcpy(this->data.data(), volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
 	else // size is different, lets first resize output volume
 	{
@@ -113,7 +87,7 @@ void volume::operator = (const volume& volumeB)
 			this->set_dim(iDim, volumeB.get_dim(iDim));
 		}
 		this->alloc_memory();
-		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
+		memcpy(this->data.data(), volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
 
 	// push resolution and origin over
@@ -126,8 +100,6 @@ void volume::operator = (const volume& volumeB)
 
 	this->minVal = volumeB.get_minVal();
 	this->maxVal = volumeB.get_maxVal();
-
-	return;
 }
 
 // helper functions for thread execution of multiplication
@@ -138,7 +110,6 @@ void rangeMult(float* arrayIn, const std::size_t startIdx, const std::size_t sto
 	{
 		arrayIn[idx] *= multVal;
 	}
-	return;
 }
 
 // multiplication operator
@@ -153,7 +124,7 @@ volume& volume::operator *= (const float multVal)
 		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
 		                            (iThread + 1) * nElementsThread - 1 :
 		                            get_nElements() - 1;
-		thread currThread(&rangeMult, this->data, startIdx, stopIdx, multVal);
+		thread currThread(&rangeMult, this->data.data(), startIdx, stopIdx, multVal);
 		workers.push_back(std::move(currThread));
 	}
 
@@ -230,14 +201,15 @@ volume volume::operator / (const volume& volumeB) const
 }
 
 // addition operator
-void rangeAdd(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx,
+void rangeAdd(float* arrayIn,
+              const std::size_t startIdx,
+              const std::size_t stopIdx,
               const float addVal)
 {
 	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
 	{
 		arrayIn[idx] += addVal;
 	}
-	return;
 }
 
 volume& volume::operator +=(const float addVal)
@@ -251,7 +223,7 @@ volume& volume::operator +=(const float addVal)
 		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
 		                            (iThread + 1) * nElementsThread - 1 :
 		                            get_nElements() - 1;
-		thread currThread(&rangeAdd, this->data, startIdx, stopIdx, addVal);
+		thread currThread(&rangeAdd, this->data.data(), startIdx, stopIdx, addVal);
 		workers.push_back(std::move(currThread));
 	}
 
@@ -333,13 +305,13 @@ volume volume::operator -(const volume& volumeB) const
 // this version is used to set a value (therefore not labeled as const)
 float& volume::operator[] (const std::size_t idx)
 {
-	return *(data + idx);
+	return data[idx];
 }
 
 // this version is used to get a value (quite a constant thing to do)
 float volume::operator[] (const std::size_t idx) const
 {
-	return *(data + idx);
+	return data[idx];
 }
 
 
@@ -365,7 +337,7 @@ float* volume::get_psliceZ(const std::size_t zLevel)
 		}
 	}
 
-	return sliceZ;
+	return sliceZ.data();
 }
 
 // get pointer to slice with x as normal
@@ -385,7 +357,7 @@ float* volume::get_psliceX(const std::size_t xLevel)
 		}
 	}
 
-	return sliceX;
+	return sliceX.data();
 }
 
 // get pointer to slice with y as normal
@@ -405,7 +377,7 @@ float* volume::get_psliceY(const std::size_t yLevel)
 		}
 	}
 
-	return sliceY;
+	return sliceY.data();
 }
 
 // get slice of volume at position
@@ -429,74 +401,52 @@ float* volume::get_psliceY(const float yPos)
 
 float volume::get_length(const std::size_t _dim) const
 {
-	return (float) dim[_dim] * res[_dim];
+	return static_cast<float>(dim[_dim]) * res[_dim];
 }
 
 // allocate memory
 void volume::alloc_memory()
 {
-	// if any memory was allocated before, make sure to free it first
-	if (isMemAlloc)
-		free_memory();
-
 	// allocate memory for data array
-	data = new float[get_nElements()];
+	data.resize(get_nElements());
 
 	// allocate memory for crosssections
-	sliceZ = new float [dim[0] * dim[1]];
-	sliceX = new float [dim[1] * dim[2]];
-	sliceY = new float [dim[0] * dim[2]];
+	sliceZ.resize(dim[0] * dim[1]);
+	sliceX.resize(dim[1] * dim[2]);
+	sliceY.resize(dim[0] * dim[2]);
 
 	// allocate memory for mips
-	mipZ = new float [dim[0] * dim[1]];
-	mipX = new float [dim[1] * dim[2]];
-	mipY = new float [dim[0] * dim[2]];
+	mipZ.resize(dim[0] * dim[1]);
+	mipX.resize(dim[1] * dim[2]);
+	mipY.resize(dim[0] * dim[2]);
 
 	// allocate memory for cropped mips
-	croppedMipZ = new float [dim[0] * dim[1]];
-	croppedMipX = new float [dim[1] * dim[2]];
-	croppedMipY = new float [dim[0] * dim[2]];
-	isMemAlloc = 1; // set flag for memory allocation
-	return;
+	croppedMipZ.resize(dim[0] * dim[1]);
+	croppedMipX.resize(dim[1] * dim[2]);
+	croppedMipY.resize(dim[0] * dim[2]);
 }
 
-// free all arrays and release memory
-void volume::free_memory()
-{
-	delete[] data;
-	delete[] sliceX;
-	delete[] sliceY;
-	delete[] sliceZ;
-	delete[] mipX;
-	delete[] mipY;
-	delete[] mipZ;
-	delete[] croppedMipX;
-	delete[] croppedMipY;
-	delete[] croppedMipZ;
-	return;
-}
 
 // define dimensions of dataset
-void volume::set_dim(const std::size_t dim0, const std::size_t dim1, const std::size_t dim2)
+void volume::set_dim(const std::size_t dim0,
+                     const std::size_t dim1,
+                     const std::size_t dim2)
 {
 	dim[0] = dim0;
 	dim[1] = dim1;
 	dim[2] = dim2;
 	nElements = dim[0] * dim[1] * dim[2];
-	return;
 }
 
 void volume::set_dim(const std::size_t* _dim)
 {
 	set_dim(_dim[0], _dim[1], _dim[2]);
-	return;
 }
 
 void volume::set_dim(const std::size_t _dim, const std::size_t newDim)
 {
 	dim[_dim] = newDim;
 	nElements = dim[0] * dim[1] * dim[2];
-	return;
 }
 
 uint64_t volume::get_dim(const std::size_t _dim) const
@@ -510,7 +460,6 @@ void volume::set_origin(const float* _origin)
 	origin[0] = _origin[0];
 	origin[1] = _origin[1];
 	origin[2] = _origin[2];
-	return;
 }
 
 void volume::set_origin(const float origin0, const float origin1, const float origin2)
@@ -518,13 +467,11 @@ void volume::set_origin(const float origin0, const float origin1, const float or
 	origin[0] = origin0;
 	origin[1] = origin1;
 	origin[2] = origin2;
-	return;
 }
 
 void volume::set_origin(const std::size_t _dim, const float _origin)
 {
 	origin[_dim] = _origin;
-	return;
 }
 
 // set resolution of volumetric dataset
@@ -533,16 +480,17 @@ void volume::set_res(const float* dx)
 #pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 		set_res(iDim, dx[iDim]);
-	return;
 }
 
 // define resolution in one go
 void volume::set_res(const float dx0, const float dx1, const float dx2)
 {
+	assert(dx0 > 0.0f);
+	assert(dx1 > 0.0f);
+	assert(dx2 > 0.0f);
 	set_res(0, dx0);
 	set_res(1, dx1);
 	set_res(2, dx2);
-	return;
 }
 
 void volume::set_res(const std::size_t _dim, const float _res)
@@ -553,7 +501,6 @@ void volume::set_res(const std::size_t _dim, const float _res)
 		throw "invalidValue";
 	}
 	res[_dim] = _res;
-	return;
 }
 
 // sets whole array to a certain value
@@ -562,7 +509,6 @@ void volume::set_value(const float value)
 	for (unsigned int iElement = 0; iElement < get_nElements(); iElement++)
 		data[iElement] = value;
 
-	return;
 }
 
 // set only one specific value in volume defined by index
@@ -571,13 +517,11 @@ void volume::set_value(
 {
 	unsigned int index = x0 + dim[0] * (x1 + x2 * dim[1]);
 	data[index] = value;
-	return;
 }
 
 void volume::set_value(const std::size_t iElem, const float value)
 {
 	data[iElem] = value;
-	return;
 }
 
 // set only one specific value in volume
@@ -585,7 +529,6 @@ void volume::set_value(const std::size_t* pos, const float value)
 {
 	std::size_t index = pos[0] + dim[0] * (pos[1] + pos[2] * dim[1]);
 	data[index] = value;
-	return;
 }
 
 float volume::get_value(const std::size_t x0, const std::size_t x1, const std::size_t x2) const
@@ -624,10 +567,10 @@ float volume::get_pos(const std::size_t idx, const std::size_t iDim) const
 	return origin[iDim] + (float) idx * res[iDim];
 }
 
-float volume::get_centerPos(const std::size_t _dim)
+float volume::get_centerPos(const std::size_t _dim) const
 {
-	const float centerPos = origin[_dim] + ((float) dim[_dim] * res[_dim]) / 2;
-	return centerPos;
+	assert(_dim < 3);
+	return origin[_dim] + get_length(_dim) / 2.0f;
 }
 
 // get index along a certain dimension
@@ -661,10 +604,10 @@ std::size_t volume::get_nElements() const
 
 
 // returns the file extension of a given path
-string getFileExt(const string _filePath)
+string getFileExt(const std::string& _filePath)
 {
 
-	size_t i = _filePath.rfind('.', _filePath.length());
+	std::size_t i = _filePath.rfind('.', _filePath.length());
 	if (i != string::npos) {
 		return (_filePath.substr(i + 1, _filePath.length() - i));
 	}
@@ -673,7 +616,7 @@ string getFileExt(const string _filePath)
 }
 
 // saving and reading data from and to h5 file
-void volume::saveToFile(const string _filePath) const
+void volume::saveToFile(const std::string& _filePath) const
 {
 	// requires implementation
 	const string ext = getFileExt(_filePath);
@@ -692,10 +635,9 @@ void volume::saveToFile(const string _filePath) const
 	{
 		throw "InvalidType";
 	}
-	return;
 }
 
-void volume::readFromFile(const string _filePath)
+void volume::readFromFile(const std::string& _filePath)
 {
 	// requires implementation
 	// requires implementation
@@ -716,12 +658,10 @@ void volume::readFromFile(const string _filePath)
 		printf("I do not support loading from this file type.\n");
 		throw "InvalidType";
 	}
-
-	return;
 }
 
 // saves our dataset to a nii file
-void volume::save_nii(const string _filePath) const
+void volume::save_nii(const std::string& _filePath) const
 {
 	// outPath = _filePath;
 
@@ -752,19 +692,16 @@ void volume::save_nii(const string _filePath) const
 		throw "FileError";
 	}
 
-	ret = fwrite(data, sizeof(float), nElements, fp);
+	ret = fwrite(data.data(), sizeof(float), nElements, fp);
 	if (ret != nElements) {
 		printf("Error writing data to %s\n", _filePath.c_str());
 		throw "FileError";
 	}
-
 	fclose(fp);
-
-	return;
 }
 
 // reads the dataset from our nii file
-void volume::read_nii(const string _filePath)
+void volume::read_nii(const std::string& _filePath)
 {
 	inPath = _filePath;
 
@@ -800,7 +737,7 @@ void volume::read_nii(const string _filePath)
 
 	if (hdr.datatype == DT_FLOAT)
 	{
-		ret = fread(data, sizeof(float), nElements, fp);
+		ret = fread(data.data(), sizeof(float), nElements, fp);
 		if (ret != nElements)
 		{
 			printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
@@ -838,12 +775,10 @@ void volume::read_nii(const string _filePath)
 		for (int i = 0; i < hdr.dim[1] * hdr.dim[2] * hdr.dim[3]; i++)
 			data[i] = (data[i] * hdr.scl_slope) + hdr.scl_inter;
 	}
-
-	return;
 }
 
 // save fata to a h5 file
-void volume::save_h5(const string _filePath) const
+void volume::save_h5(const std::string& _filePath) const
 {
 	H5::H5File file(_filePath, H5F_ACC_TRUNC);
 
@@ -874,15 +809,14 @@ void volume::save_h5(const string _filePath) const
 	H5::DataSpace mspaceData(1, &col_data);
 	H5::DataSet dataDataset = file.createDataSet(
 	                            "vol", H5::PredType::NATIVE_FLOAT, mspaceData);
-	dataDataset.write(data, H5::PredType::NATIVE_FLOAT);
+	dataDataset.write(data.data(), H5::PredType::NATIVE_FLOAT);
 	dataDataset.close();
 
 	file.close();
-	return;
 }
 
 // read data from a h5 file
-void volume::read_h5(const string _filePath)
+void volume::read_h5(const std::string& _filePath)
 {
 	inPath = _filePath;
 	H5::H5File file(_filePath, H5F_ACC_RDONLY); // open dataset as read only
@@ -915,12 +849,9 @@ void volume::read_h5(const string _filePath)
 
 	alloc_memory();
 
-	dataDataset.read(data, H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
-
-	isMemAlloc = 1;
+	dataDataset.read(data.data(), H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
 
 	file.close();
-	return;
 }
 
 // prints all the required information about the loaded volume
@@ -931,7 +862,6 @@ void volume::print_information() const
 	printf(" - resolution:    %.2e, %.2e, %.2e \n", res[0], res[1], res[2]);
 	printf(" - dimensions:    %lu, %lu, %lu \n", dim[0], dim[1], dim[2]);
 	printf(" - first element: %f \n - last element:  %f\n", data[0], data[nElements - 1]);
-	return;
 }
 
 float volume::get_minPos(const uint8_t _dim) const {return origin[_dim];}
@@ -965,7 +895,6 @@ void volume::get_croppedVolume(
 	const uint64_t stop2 = stopIdx[2];
 
 	getCroppedVolume(vol, start0, stop0, start1, stop1, start2, stop2);
-	return;
 }
 
 void volume::getCroppedVolume(
@@ -1001,8 +930,7 @@ void volume::getCroppedVolume(
 	const uint64_t nElements = n0 * n1 * n2;
 
 	// set all values in volume for now to 0
-	for (uint64_t idx = 0; idx < nElements; idx++)
-		vol[idx] = 0;
+	for (uint64_t idx = 0; idx < nElements; idx++) vol[idx] = 0;
 
 	// check if all stop indices are within range
 	const uint64_t stopTrue0 = (stop0 >= dim[0]) ? (dim[0] - 1) : stop0;
@@ -1055,7 +983,6 @@ void volume::getCroppedVolume(
 void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 {
 	uint64_t dimNew[3] = {0, 0, 0};
-#pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		if (stopIdx[iDim] < startIdx[iDim])
@@ -1073,7 +1000,7 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 		dimNew[iDim] = stopIdx[iDim] - startIdx[iDim] + 1;
 	}
 
-	float* newData = new float [dimNew[0] * dimNew[1] * dimNew[2]];
+	std::vector<float> newData(dimNew[0] * dimNew[1] * dimNew[2]);
 
 	for (uint64_t iz = 1; iz < dimNew[2]; iz++)
 	{
@@ -1087,8 +1014,7 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 		}
 	}
 
-	// update dimensions and origin
-#pragma unroll
+	// update dimensions and origin of this volume
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		origin[iDim] = origin[iDim] + res[iDim] * (float) startIdx[iDim];
@@ -1096,15 +1022,15 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 		dim[iDim] = dimNew[iDim];
 	}
 
-	alloc_memory();
-	delete[] data;
+	// now move the new data vector over
 	data = newData;
-
-	return;
 }
 
-void rangeMinMax(const float* data, const std::size_t startIdx, const std::size_t stopIdx,
-                 float* localMin, float* localMax)
+void rangeMinMax(const float* data,
+                 const std::size_t startIdx,
+                 const std::size_t stopIdx,
+                 float* localMin,
+                 float* localMax)
 {
 	*localMin = data[startIdx];
 	*localMax = data[stopIdx];
@@ -1117,8 +1043,6 @@ void rangeMinMax(const float* data, const std::size_t startIdx, const std::size_
 		if (*localMax < data[idx])
 			*localMax = data[idx];
 	}
-
-	return;
 }
 
 // calculates maximum and minimum value in matrix
@@ -1128,8 +1052,8 @@ void volume::calcMinMax()
 	const std::size_t nElementsThread = get_nElements() / processor_count;
 	workers.clear();
 
-	float* localMin = new float [processor_count];
-	float* localMax = new float [processor_count];
+	std::vector<float> localMin(processor_count);
+	std::vector<float> localMax(processor_count);
 
 	for (uint8_t iThread = 0; iThread < processor_count; iThread++)
 	{
@@ -1138,7 +1062,7 @@ void volume::calcMinMax()
 		                            (iThread + 1) * nElementsThread - 1 :
 		                            get_nElements() - 1;
 		thread currThread(
-		  &rangeMinMax, data, startIdx, stopIdx, &localMin[iThread], &localMax[iThread]);
+		  &rangeMinMax, data.data(), startIdx, stopIdx, &localMin[iThread], &localMax[iThread]);
 		workers.push_back(std::move(currThread));
 	}
 
@@ -1166,20 +1090,10 @@ void volume::calcMinMax()
 		maxAbsVal = abs(maxVal);
 	}
 
-	delete[] localMin;
-	delete[] localMax;
-	return;
 }
 
-void volume::exportVtk(const string filePath)
+void volume::exportVtk(const std::string& filePath)
 {
-	// create copy of datset before messing with polarity
-	float* dataCopy = new float [nElements];
-	assign(dataCopy, data, nElements);
-
-	// const string polarityHandling (sett.get_polarityHandling());
-
-	// handlePolarity(dataCopy, estimAbs.nElements, polarityHandling);
 
 	vtkwriter outputter; // prepare output pipeline
 	const string title ("reconVol"); // generate title
@@ -1189,11 +1103,8 @@ void volume::exportVtk(const string filePath)
 	const string outputPath (filePath);
 	outputter.set_outputPath(outputPath);
 
-	float * dataOld = data;
-	data = dataCopy;
-
 	griddedData myData;
-	myData.data = data;
+	myData.data = data.data();
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		myData.origin[iDim] = origin[iDim];
@@ -1204,15 +1115,6 @@ void volume::exportVtk(const string filePath)
 	outputter.set_structuredPoints(&myData);
 	outputter.set_binary();
 	outputter.write();
-	delete[] dataCopy;
-	data = dataOld;
-	return;
-}
-
-void volume::set_pdata(float* _data)
-{
-	data = _data;
-	return;
 }
 
 // calculates the maximum intensity projections over the full volume
@@ -1262,7 +1164,6 @@ void volume::calcMips()
 		}
 	}
 
-	return;
 }
 
 // update the cropping range
@@ -1273,8 +1174,6 @@ void volume::calcCroppedMips(const float* _cropRange)
 		cropRange[idx] = _cropRange[idx];
 	}
 	calcCroppedMips();
-
-	return;
 }
 
 struct thread_data
@@ -1388,9 +1287,9 @@ void volume::calcCroppedMips()
 		mipYTemp[iProcessor] = new float [dim[0] * dim[1]];
 		for (uint64_t iElem = 0; iElem < (dim[0] * dim[1]); iElem++)
 			mipYTemp[iProcessor][iElem] = 0;
-		td[iProcessor].ptrMipX = croppedMipX;
+		td[iProcessor].ptrMipX = croppedMipX.data();
 		td[iProcessor].ptrMipY = mipYTemp[iProcessor];
-		td[iProcessor].ptrMipZ = croppedMipZ;
+		td[iProcessor].ptrMipZ = croppedMipZ.data();
 
 		for (uint8_t iDim = 0; iDim < 3; iDim++)
 			td[iProcessor].dim[iDim] = dim[iDim];
@@ -1400,7 +1299,7 @@ void volume::calcCroppedMips()
 		td[iProcessor].cropX[0] = idxCropRange[2];
 		td[iProcessor].cropX[1] = idxCropRange[3];
 
-		td[iProcessor].data = data;
+		td[iProcessor].data = data.data();
 
 		// printf("worker %d runs from %d to %d\n", iProcessor, td[iProcessor].startY, td[iProcessor].stopY);
 
@@ -1446,46 +1345,41 @@ void volume::calcCroppedMips()
 	// for maximum value it is sufficient to compare against one mip
 	for (uint64_t iElem = 0; iElem < (dim[1] * dim[2]); iElem++)
 	{
-		if (croppedMipZ[iElem] > maxValCrop)
-			maxValCrop = croppedMipZ[iElem];
+		if (croppedMipZ[iElem] > maxValCrop) maxValCrop = croppedMipZ[iElem];
+		if (croppedMipZ[iElem] < minValCrop) minValCrop = croppedMipZ[iElem];
 
-		if (croppedMipZ[iElem] < minValCrop)
-			minValCrop = croppedMipZ[iElem];
 	}
 
 	// for minimum value we also need to compare against the two other
 	for (uint64_t iElem = 0; iElem < (dim[0] * dim[2]); iElem++)
 	{
-		if (croppedMipX[iElem] < minValCrop)
-			minValCrop = croppedMipX[iElem];
+		if (croppedMipX[iElem] < minValCrop) minValCrop = croppedMipX[iElem];
 	}
 
 	for (uint64_t iElem = 0; iElem < (dim[0] * dim[1]); iElem++)
 	{
-		if (croppedMipY[iElem] < minValCrop)
-			minValCrop = croppedMipY[iElem];
+		if (croppedMipY[iElem] < minValCrop) minValCrop = croppedMipY[iElem];
 	}
 
-	updatedCropRange = 0;
+	updatedCropRange = false;
 	printf("Time taken: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
 
-	return;
 }
 
 float* volume::get_croppedMipX()
 {
-	return croppedMipX;
+	return croppedMipX.data();
 }
 
 float* volume::get_croppedMipY()
 {
-	return croppedMipY;
+	return croppedMipY.data();
 }
 
 float* volume::get_croppedMipZ()
 {
 
-	return croppedMipZ;
+	return croppedMipZ.data();
 }
 
 float* volume::get_croppedMipX(const float* _cropX)
@@ -1504,7 +1398,7 @@ float* volume::get_croppedMipX(const float* _cropX)
 	if (flagChanged)
 		calcCroppedMips();
 
-	return croppedMipX;
+	return croppedMipX.data();
 }
 
 float* volume::get_croppedMipZ(const float* _cropZ)
@@ -1522,7 +1416,7 @@ float* volume::get_croppedMipZ(const float* _cropZ)
 	if (flagChanged)
 		calcCroppedMips();
 
-	return croppedMipZ;
+	return croppedMipZ.data();
 }
 
 float* volume::get_croppedMipY(const float* _cropY)
@@ -1540,7 +1434,7 @@ float* volume::get_croppedMipY(const float* _cropY)
 	if (flagChanged)
 		calcCroppedMips();
 
-	return croppedMipY;
+	return croppedMipY.data();
 }
 
 // define the cropping range along x
@@ -1554,7 +1448,6 @@ void volume::set_cropRangeX(const float* _cropX)
 			updatedCropRange = 1;
 		}
 	}
-	return;
 }
 
 // define the cropping range along z
@@ -1568,7 +1461,6 @@ void volume::set_cropRangeZ(const float* _cropZ)
 			updatedCropRange = 1;
 		}
 	}
-	return;
 }
 
 // define the cropping range along y
@@ -1582,13 +1474,12 @@ void volume::set_cropRangeY(const float* _cropY)
 			updatedCropRange = 1;
 		}
 	}
-	return;
 }
 
 // normalize the entire array
 void volume::normalize()
 {
-	const float normVal = getNorm(data, nElements);
+	const float normVal = getNorm(data.data(), nElements);
 	if (normVal > 0)
 	{
 		const float rnormVal = 1.0f / normVal;
@@ -1597,12 +1488,11 @@ void volume::normalize()
 			data[iElem] = data[iElem] * rnormVal;
 		}
 	}
-	return;
 }
 
 float volume::get_norm() const
 {
-	return getNorm(data, nElements);
+	return getNorm(data.data(), nElements);
 }
 
 
@@ -1610,14 +1500,12 @@ float volume::get_norm() const
 void volume::fill_rand()
 {
 	fill_rand(0.0f, 1.0f);
-	return;
 }
 
 // fills volume with random values between 0 and maxVal
 void volume::fill_rand(const float maxVal)
 {
 	fill_rand(0.0f, maxVal);
-	return;
 }
 
 // fills volume with random numbers between minVal and maxVal
@@ -1631,5 +1519,4 @@ void volume::fill_rand(const float minVal, const float maxVal)
 		const float randVal = ((float) rand()) * irmax;
 		data[iElem] = (randVal * (maxVal - minVal)) + minVal;
 	}
-	return;
 }
