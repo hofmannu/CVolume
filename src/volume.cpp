@@ -1,34 +1,25 @@
 #include "volume.h"
 
 // default empty constructor
-volume::volume()
+volume::volume() : baseClass("volume"), processor_count(std::thread::hardware_concurrency())
 {
-	construct();
-	
+
 }
 
 // constructor to initialize volume with dimensions
-volume::volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2)
+volume::volume(const std::size_t _dim0,
+               const std::size_t _dim1,
+               const std::size_t _dim2) : volume()
+
 {
-	construct();
-	
+
 	set_dim(_dim0, _dim1, _dim2);
 	alloc_memory();
 	volume();
 }
 
-// class destructor
-volume::~volume()
+volume::volume(const volume& obj) : volume()
 {
-	// if memory was allocated in data, release now
-	if (isMemAlloc)
-		free_memory();
-}
-
-// copy constructor (this is new instance, obj is the one we copy from
-volume::volume(const volume& obj)
-{
-	construct();
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		this->set_dim(iDim, obj.get_dim(iDim));
@@ -44,11 +35,12 @@ volume::volume(const volume& obj)
 	return;
 }
 
-void volume::construct()
+// class destructor
+volume::~volume()
 {
-	className = "volume";
-	processor_count = std::thread::hardware_concurrency();
-	return;
+	// if memory was allocated in data, release now
+	if (isMemAlloc)
+		free_memory();
 }
 
 // equal operator
@@ -113,19 +105,19 @@ void volume::operator = (const volume& volumeB)
 	{
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
-	else // size is different, lets first resize output volume 
+	else // size is different, lets first resize output volume
 	{
-		#pragma unroll
+#pragma unroll
 		for (std::size_t iDim = 0; iDim < 3; iDim++)
 		{
 			this->set_dim(iDim, volumeB.get_dim(iDim));
-				}
+		}
 		this->alloc_memory();
 		memcpy(this->data, volumeB.get_pdata(), this->nElements * sizeof(float));
 	}
 
 	// push resolution and origin over
-	#pragma unroll
+#pragma unroll
 	for (std::size_t iDim = 0; iDim < 3; iDim++)
 	{
 		this->set_res(iDim, volumeB.get_res(iDim));
@@ -139,8 +131,8 @@ void volume::operator = (const volume& volumeB)
 }
 
 // helper functions for thread execution of multiplication
-void rangeMult(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx, 
-	const float multVal)
+void rangeMult(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx,
+               const float multVal)
 {
 	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
 	{
@@ -159,8 +151,8 @@ volume& volume::operator *= (const float multVal)
 	{
 		const std::size_t startIdx = iThread * nElementsThread;
 		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
-			(iThread + 1) * nElementsThread - 1 :
-			get_nElements() - 1;
+		                            (iThread + 1) * nElementsThread - 1 :
+		                            get_nElements() - 1;
 		thread currThread(&rangeMult, this->data, startIdx, stopIdx, multVal);
 		workers.push_back(std::move(currThread));
 	}
@@ -202,7 +194,7 @@ volume volume::operator * (const volume& volumeB) const
 // division operator (redirection to *=)
 volume& volume::operator /=(const float divVal)
 {
-	const float multVal = 1.0f / divVal; 
+	const float multVal = 1.0f / divVal;
 	*this *= multVal;
 	return *this;
 }
@@ -238,8 +230,8 @@ volume volume::operator / (const volume& volumeB) const
 }
 
 // addition operator
-void rangeAdd(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx, 
-	const float addVal)
+void rangeAdd(float* arrayIn, const std::size_t startIdx, const std::size_t stopIdx,
+              const float addVal)
 {
 	for (std::size_t idx = startIdx; idx <= stopIdx; idx++)
 	{
@@ -257,8 +249,8 @@ volume& volume::operator +=(const float addVal)
 	{
 		const std::size_t startIdx = iThread * nElementsThread;
 		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
-			(iThread + 1) * nElementsThread - 1 :
-			get_nElements() - 1;
+		                            (iThread + 1) * nElementsThread - 1 :
+		                            get_nElements() - 1;
 		thread currThread(&rangeAdd, this->data, startIdx, stopIdx, addVal);
 		workers.push_back(std::move(currThread));
 	}
@@ -339,13 +331,13 @@ volume volume::operator -(const volume& volumeB) const
 }
 
 // this version is used to set a value (therefore not labeled as const)
-float& volume::operator[] (const std::size_t idx) 
+float& volume::operator[] (const std::size_t idx)
 {
 	return *(data + idx);
 }
 
 // this version is used to get a value (quite a constant thing to do)
-float volume::operator[] (const std::size_t idx) const 
+float volume::operator[] (const std::size_t idx) const
 {
 	return *(data + idx);
 }
@@ -447,11 +439,11 @@ void volume::alloc_memory()
 	if (isMemAlloc)
 		free_memory();
 
-	// allocate memory for data array	
+	// allocate memory for data array
 	data = new float[get_nElements()];
-	
+
 	// allocate memory for crosssections
-	sliceZ = new float [dim[0] * dim[1]]; 
+	sliceZ = new float [dim[0] * dim[1]];
 	sliceX = new float [dim[1] * dim[2]];
 	sliceY = new float [dim[0] * dim[2]];
 
@@ -538,10 +530,10 @@ void volume::set_origin(const std::size_t _dim, const float _origin)
 // set resolution of volumetric dataset
 void volume::set_res(const float* dx)
 {
-	#pragma unroll
+#pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 		set_res(iDim, dx[iDim]);
-	return; 
+	return;
 }
 
 // define resolution in one go
@@ -575,7 +567,7 @@ void volume::set_value(const float value)
 
 // set only one specific value in volume defined by index
 void volume::set_value(
-	const std::size_t x0, const std::size_t x1, const std::size_t x2, const float value)
+  const std::size_t x0, const std::size_t x1, const std::size_t x2, const float value)
 {
 	unsigned int index = x0 + dim[0] * (x1 + x2 * dim[1]);
 	data[index] = value;
@@ -653,7 +645,7 @@ uint64_t volume::get_idx(const float pos, const std::size_t iDim) const
 	else
 	{
 		const std::size_t outputIdx = (pos - origin[iDim]) / res[iDim] + 0.5;
-		if (outputIdx > (dim[iDim] - 1)){
+		if (outputIdx > (dim[iDim] - 1)) {
 			printf("[volume] hitting upper boundary of volume along dim %d\n", iDim);
 			return dim[iDim] - 1;
 		}
@@ -673,11 +665,11 @@ string getFileExt(const string _filePath)
 {
 
 	size_t i = _filePath.rfind('.', _filePath.length());
-   if (i != string::npos) {
-      return(_filePath.substr(i+1, _filePath.length() - i));
-   }
+	if (i != string::npos) {
+		return (_filePath.substr(i + 1, _filePath.length() - i));
+	}
 
-  return(""); 
+	return ("");
 }
 
 // saving and reading data from and to h5 file
@@ -733,40 +725,40 @@ void volume::save_nii(const string _filePath) const
 {
 	// outPath = _filePath;
 
-	nifti1_extender pad={0,0,0,0};
-  int ret;
-  nifti_1_header hdr_cpy = hdr;
+	nifti1_extender pad = {0, 0, 0, 0};
+	int ret;
+	nifti_1_header hdr_cpy = hdr;
 
-  hdr_cpy.datatype = DT_FLOAT;
-  
-  FILE *fp = fopen(_filePath.c_str(), "w");
-  if (fp == NULL) 
-  {
-    printf("Error opening header file %s for write\n", _filePath.c_str());
-    throw "FileError";
-  }
+	hdr_cpy.datatype = DT_FLOAT;
 
-  ret = fwrite(&hdr_cpy, MIN_HEADER_SIZE, 1, fp);
-  if (ret != 1) 
-  {
-    printf("Error writing header file %s\n", _filePath.c_str());
-    throw "FileError";
-  }
+	FILE *fp = fopen(_filePath.c_str(), "w");
+	if (fp == NULL)
+	{
+		printf("Error opening header file %s for write\n", _filePath.c_str());
+		throw "FileError";
+	}
 
-  ret = fwrite(&pad, 4, 1, fp);
-  if (ret != 1) 
-  {
-    printf("Error writing header file extension pad %s\n", _filePath.c_str());
-   throw "FileError";
-  }
+	ret = fwrite(&hdr_cpy, MIN_HEADER_SIZE, 1, fp);
+	if (ret != 1)
+	{
+		printf("Error writing header file %s\n", _filePath.c_str());
+		throw "FileError";
+	}
 
-  ret = fwrite(data, sizeof(float), nElements, fp);
-  if (ret != nElements) {
-    printf("Error writing data to %s\n", _filePath.c_str());
-    throw "FileError";
-  }
+	ret = fwrite(&pad, 4, 1, fp);
+	if (ret != 1)
+	{
+		printf("Error writing header file extension pad %s\n", _filePath.c_str());
+		throw "FileError";
+	}
 
-  fclose(fp);
+	ret = fwrite(data, sizeof(float), nElements, fp);
+	if (ret != nElements) {
+		printf("Error writing data to %s\n", _filePath.c_str());
+		throw "FileError";
+	}
+
+	fclose(fp);
 
 	return;
 }
@@ -777,75 +769,75 @@ void volume::read_nii(const string _filePath)
 	inPath = _filePath;
 
 	// open and read header
-  FILE *fp = fopen(inPath.c_str(), "r");
-  if (fp == NULL) 
-  {
-    printf("Error opening header file %s\n", inPath.c_str());
-    throw "FileError";
-  }
+	FILE *fp = fopen(inPath.c_str(), "r");
+	if (fp == NULL)
+	{
+		printf("Error opening header file %s\n", inPath.c_str());
+		throw "FileError";
+	}
 
-  int ret = fread(&hdr, MIN_HEADER_SIZE, 1, fp);
-  if (ret != 1) 
-  {
-    printf("Error reading header file %s\n", inPath.c_str());
-    throw "OperationFailed";
-  }
+	int ret = fread(&hdr, MIN_HEADER_SIZE, 1, fp);
+	if (ret != 1)
+	{
+		printf("Error reading header file %s\n", inPath.c_str());
+		throw "OperationFailed";
+	}
 
-  ret = fseek(fp, (long)(hdr.vox_offset), SEEK_SET);
-  if (ret != 0) 
-  {
-    printf("Error doing fseek() to %ld in data file %s\n",
-      (long)(hdr.vox_offset), inPath.c_str());
-    throw "InvalidOperation";
-  }
+	ret = fseek(fp, (long)(hdr.vox_offset), SEEK_SET);
+	if (ret != 0)
+	{
+		printf("Error doing fseek() to %ld in data file %s\n",
+		       (long)(hdr.vox_offset), inPath.c_str());
+		throw "InvalidOperation";
+	}
 
-  // move dimensions from header struct to volume
-  set_dim(hdr.dim[1], hdr.dim[2], hdr.dim[3]);
-  set_res(hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3]);
-  // printf("Dataset dimensions: %lu x %lu x %lu", 
-  // 	hdr.dim[1], hdr.dim[2], hdr.dim[3]);
-  alloc_memory();
+	// move dimensions from header struct to volume
+	set_dim(hdr.dim[1], hdr.dim[2], hdr.dim[3]);
+	set_res(hdr.pixdim[1], hdr.pixdim[2], hdr.pixdim[3]);
+	// printf("Dataset dimensions: %lu x %lu x %lu",
+	// 	hdr.dim[1], hdr.dim[2], hdr.dim[3]);
+	alloc_memory();
 
-  if (hdr.datatype == DT_FLOAT)
-  {
-    ret = fread(data, sizeof(float), nElements, fp);
-    if (ret != nElements)
-    {
-      printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
-      exit(1);
-    }
-  }
-  else if (hdr.datatype == DT_INT16)
-  {
-    int16_t* tempArray = new int16_t[hdr.dim[1] * hdr.dim[2] * hdr.dim[3]];
-    ret = fread(tempArray, sizeof(int16_t), hdr.dim[1] * hdr.dim[2] * hdr.dim[3], fp);
-    if (ret != nElements)
-    {
-      printf("Error reading volume 1 from %s (%d)\n",
-        inPath.c_str(), ret);
-      exit(1);
-    }
+	if (hdr.datatype == DT_FLOAT)
+	{
+		ret = fread(data, sizeof(float), nElements, fp);
+		if (ret != nElements)
+		{
+			printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
+			exit(1);
+		}
+	}
+	else if (hdr.datatype == DT_INT16)
+	{
+		int16_t* tempArray = new int16_t[hdr.dim[1] * hdr.dim[2] * hdr.dim[3]];
+		ret = fread(tempArray, sizeof(int16_t), hdr.dim[1] * hdr.dim[2] * hdr.dim[3], fp);
+		if (ret != nElements)
+		{
+			printf("Error reading volume 1 from %s (%d)\n",
+			       inPath.c_str(), ret);
+			exit(1);
+		}
 
-    // convert to float
-    for (int iElem = 0; iElem < (hdr.dim[1] * hdr.dim[2] * hdr.dim[3]); iElem++)
-      data[iElem] = (float) tempArray[iElem];
+		// convert to float
+		for (int iElem = 0; iElem < (hdr.dim[1] * hdr.dim[2] * hdr.dim[3]); iElem++)
+			data[iElem] = (float) tempArray[iElem];
 
-    delete[] tempArray;
-  }
-  else
-  {
-    printf("Data type %d requires implementation!\n", hdr.datatype);
-    throw "InvalidValue";
-  }
+		delete[] tempArray;
+	}
+	else
+	{
+		printf("Data type %d requires implementation!\n", hdr.datatype);
+		throw "InvalidValue";
+	}
 
-  fclose(fp);
+	fclose(fp);
 
-  // scale the data buffer
-  if (hdr.scl_slope != 0) 
-  {
-    for (int i=0; i < hdr.dim[1] * hdr.dim[2] * hdr.dim[3]; i++)
-      data[i] = (data[i] * hdr.scl_slope) + hdr.scl_inter;
-  }
+	// scale the data buffer
+	if (hdr.scl_slope != 0)
+	{
+		for (int i = 0; i < hdr.dim[1] * hdr.dim[2] * hdr.dim[3]; i++)
+			data[i] = (data[i] * hdr.scl_slope) + hdr.scl_inter;
+	}
 
 	return;
 }
@@ -859,21 +851,21 @@ void volume::save_h5(const string _filePath) const
 	const hsize_t col_dims = 3;
 	H5::DataSpace mspaceRes(1, &col_dims);
 	H5::DataSet resDataset = file.createDataSet(
-		"dr", H5::PredType::NATIVE_FLOAT, mspaceRes);
+	                           "dr", H5::PredType::NATIVE_FLOAT, mspaceRes);
 	resDataset.write(res, H5::PredType::NATIVE_FLOAT);
 	resDataset.close();
 
 	// write origin to file
 	H5::DataSpace mspaceOrigin(1, &col_dims);
 	H5::DataSet originDataset = file.createDataSet(
-		"origin", H5::PredType::NATIVE_FLOAT, mspaceOrigin);
+	                              "origin", H5::PredType::NATIVE_FLOAT, mspaceOrigin);
 	originDataset.write(origin, H5::PredType::NATIVE_FLOAT);
 	originDataset.close();
 
 	// write dimension to file
 	H5::DataSpace mspaceDim(1, &col_dims);
 	H5::DataSet dimDataset = file.createDataSet(
-		"dim", H5::PredType::NATIVE_UINT, mspaceDim);
+	                           "dim", H5::PredType::NATIVE_UINT, mspaceDim);
 	dimDataset.write(dim, H5::PredType::NATIVE_UINT64);
 	dimDataset.close();
 
@@ -881,7 +873,7 @@ void volume::save_h5(const string _filePath) const
 	const hsize_t col_data = nElements;
 	H5::DataSpace mspaceData(1, &col_data);
 	H5::DataSet dataDataset = file.createDataSet(
-		"vol", H5::PredType::NATIVE_FLOAT, mspaceData);
+	                            "vol", H5::PredType::NATIVE_FLOAT, mspaceData);
 	dataDataset.write(data, H5::PredType::NATIVE_FLOAT);
 	dataDataset.close();
 
@@ -896,15 +888,15 @@ void volume::read_h5(const string _filePath)
 	H5::H5File file(_filePath, H5F_ACC_RDONLY); // open dataset as read only
 
 	// load resolution from file
-	H5::DataSet resDataset = file.openDataSet("dr"); // init dataset for res 
+	H5::DataSet resDataset = file.openDataSet("dr"); // init dataset for res
 	const hsize_t col_dims = 3;
-	H5::DataSpace mspaceRes (1, &col_dims); 
+	H5::DataSpace mspaceRes (1, &col_dims);
 	H5::DataSpace filespace = resDataset.getSpace();
-	resDataset.read(res, H5::PredType::NATIVE_FLOAT, mspaceRes, filespace); 	
+	resDataset.read(res, H5::PredType::NATIVE_FLOAT, mspaceRes, filespace);
 
 	// load origin from file
 	H5::DataSet originDataset = file.openDataSet("origin"); // dataset for origin
-	H5::DataSpace mspaceOrigin (1, &col_dims); 
+	H5::DataSpace mspaceOrigin (1, &col_dims);
 	filespace = originDataset.getSpace();
 	originDataset.read(origin, H5::PredType::NATIVE_FLOAT, mspaceOrigin, filespace);
 
@@ -917,10 +909,10 @@ void volume::read_h5(const string _filePath)
 
 	// read actual datamatrix
 	H5::DataSet dataDataset = file.openDataSet("vol"); // read actual dataset
-	const hsize_t col_dims_data = nElements; 
-	H5::DataSpace mspaceData (1, &col_dims_data);	
+	const hsize_t col_dims_data = nElements;
+	H5::DataSpace mspaceData (1, &col_dims_data);
 	filespace = dataDataset.getSpace();
-	
+
 	alloc_memory();
 
 	dataDataset.read(data, H5::PredType::NATIVE_FLOAT, mspaceData, filespace);
@@ -962,9 +954,9 @@ float volume::getRangeLimitedPos(const float pos, const uint8_t _dim) const
 
 // get cropped volume, start and stopped passed as array
 void volume::get_croppedVolume(
-	float* vol, const uint64_t *startIdx, const uint64_t *stopIdx) const
+  float* vol, const uint64_t *startIdx, const uint64_t *stopIdx) const
 {
- 
+
 	const uint64_t start0 = startIdx[0];
 	const uint64_t stop0 = stopIdx[0];
 	const uint64_t start1 = startIdx[1];
@@ -972,15 +964,15 @@ void volume::get_croppedVolume(
 	const uint64_t start2 = startIdx[2];
 	const uint64_t stop2 = stopIdx[2];
 
- getCroppedVolume(vol, start0, stop0, start1, stop1, start2, stop2);
- return;
+	getCroppedVolume(vol, start0, stop0, start1, stop1, start2, stop2);
+	return;
 }
 
 void volume::getCroppedVolume(
-	float* vol, // array pointing to output volume
-	const uint64_t start0, const uint64_t stop0,
-	const uint64_t start1, const uint64_t stop1,
-	const uint64_t start2, const uint64_t stop2) const
+  float* vol, // array pointing to output volume
+  const uint64_t start0, const uint64_t stop0,
+  const uint64_t start1, const uint64_t stop1,
+  const uint64_t start2, const uint64_t stop2) const
 {
 
 	// check that stop index is always bigger then start index
@@ -1020,7 +1012,7 @@ void volume::getCroppedVolume(
 	const uint64_t stopTrue1 = (stop1 >= dim[1]) ? (dim[1] - 1) : stop1;
 	if (stopTrue1 != stop1)
 		printf("Cropping not doable in dim1\n");
-	
+
 	const uint64_t stopTrue2 = (stop2 >= dim[2]) ? (dim[2] - 1) : stop2;
 	if (stopTrue2 != stop2)
 		printf("Cropping not doable in dim2\n");
@@ -1029,7 +1021,7 @@ void volume::getCroppedVolume(
 	// idx = i0 + n0 * i1 + n0 * n1 * i2
 	uint64_t idx; // index in original data matrix
 	uint64_t offset2, offset1; // offsets in original data matrix
-	
+
 	// index in nnewly created data matrix
 	// idxOut = j0 + m0 * j1 + m0 * m1 * j2
 
@@ -1037,19 +1029,19 @@ void volume::getCroppedVolume(
 	// i0 --> i0 - start0
 	// i1 --> i1 - start1
 	// i2 --> i2 - start2
-	
+
 	uint64_t idxOut;
 	uint64_t offset2Out, offset1Out; // offset in output data matrix
-	#pragma unroll
-	for (uint64_t i2 = start2; i2 <= stopTrue2; i2++){
+#pragma unroll
+	for (uint64_t i2 = start2; i2 <= stopTrue2; i2++) {
 		offset2 = i2 * dim[0] * dim[1];
 		offset2Out = (i2 - start2) * n0 * n1;
-		#pragma unroll
-		for (uint64_t i1 = start1; i1 <= stopTrue1; i1++){
+#pragma unroll
+		for (uint64_t i1 = start1; i1 <= stopTrue1; i1++) {
 			offset1 = i1 * dim[0];
 			offset1Out = (i1 - start1) * n0;
-			#pragma unroll
-			for (unsigned int i0 = start0; i0 < stopTrue0; i0++){
+#pragma unroll
+			for (unsigned int i0 = start0; i0 < stopTrue0; i0++) {
 				idx = offset2 + offset1 + i0;
 				idxOut = offset2Out + offset1Out + (i0 - start0);
 				vol[idxOut] = data[idx];
@@ -1062,8 +1054,8 @@ void volume::getCroppedVolume(
 
 void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 {
-	uint64_t dimNew[3] = {0,0,0};
-	#pragma unroll
+	uint64_t dimNew[3] = {0, 0, 0};
+#pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		if (stopIdx[iDim] < startIdx[iDim])
@@ -1074,8 +1066,8 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 
 		if (stopIdx[iDim] > dim[iDim])
 		{
-			printf("Cropping is exceeding array dimensions along dim %d (%lu of %lu)\n", 
-				iDim, stopIdx[iDim], dim[iDim]);
+			printf("Cropping is exceeding array dimensions along dim %d (%lu of %lu)\n",
+			       iDim, stopIdx[iDim], dim[iDim]);
 			throw "InvalidValue";
 		}
 		dimNew[iDim] = stopIdx[iDim] - startIdx[iDim] + 1;
@@ -1096,7 +1088,7 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 	}
 
 	// update dimensions and origin
-	#pragma unroll
+#pragma unroll
 	for (uint8_t iDim = 0; iDim < 3; iDim++)
 	{
 		origin[iDim] = origin[iDim] + res[iDim] * (float) startIdx[iDim];
@@ -1112,7 +1104,7 @@ void volume::crop(const uint64_t* startIdx, const uint64_t* stopIdx)
 }
 
 void rangeMinMax(const float* data, const std::size_t startIdx, const std::size_t stopIdx,
-	float* localMin, float* localMax)
+                 float* localMin, float* localMax)
 {
 	*localMin = data[startIdx];
 	*localMax = data[stopIdx];
@@ -1132,7 +1124,7 @@ void rangeMinMax(const float* data, const std::size_t startIdx, const std::size_
 // calculates maximum and minimum value in matrix
 void volume::calcMinMax()
 {
-	
+
 	const std::size_t nElementsThread = get_nElements() / processor_count;
 	workers.clear();
 
@@ -1143,10 +1135,10 @@ void volume::calcMinMax()
 	{
 		const std::size_t startIdx = iThread * nElementsThread;
 		const std::size_t stopIdx = (iThread < (processor_count - 1)) ?
-			(iThread + 1) * nElementsThread - 1 :
-			get_nElements() - 1;
+		                            (iThread + 1) * nElementsThread - 1 :
+		                            get_nElements() - 1;
 		thread currThread(
-			&rangeMinMax, data, startIdx, stopIdx, &localMin[iThread], &localMax[iThread]);
+		  &rangeMinMax, data, startIdx, stopIdx, &localMin[iThread], &localMax[iThread]);
 		workers.push_back(std::move(currThread));
 	}
 
@@ -1162,7 +1154,7 @@ void volume::calcMinMax()
 			minVal = localMin[iProcessor];
 
 		if (maxVal < localMax[iProcessor])
-			maxVal = localMax[iProcessor];  
+			maxVal = localMax[iProcessor];
 	}
 
 	if (abs(minVal) > abs(maxVal))
@@ -1184,15 +1176,15 @@ void volume::exportVtk(const string filePath)
 	// create copy of datset before messing with polarity
 	float* dataCopy = new float [nElements];
 	assign(dataCopy, data, nElements);
-	
+
 	// const string polarityHandling (sett.get_polarityHandling());
-	
+
 	// handlePolarity(dataCopy, estimAbs.nElements, polarityHandling);
 
 	vtkwriter outputter; // prepare output pipeline
 	const string title ("reconVol"); // generate title
 	outputter.set_title(title); // define title of outut volume
-	const string type ("STRUCTURED_POINTS"); 
+	const string type ("STRUCTURED_POINTS");
 	outputter.set_type(type); // define output type
 	const string outputPath (filePath);
 	outputter.set_outputPath(outputPath);
@@ -1278,7 +1270,7 @@ void volume::calcCroppedMips(const float* _cropRange)
 {
 	for (uint8_t idx = 0; idx < 6; idx++)
 	{
-			cropRange[idx] = _cropRange[idx];
+		cropRange[idx] = _cropRange[idx];
 	}
 	calcCroppedMips();
 
@@ -1299,22 +1291,22 @@ struct thread_data
 	float* data;
 };
 
-void *CalcSubMips(void *threadarg) 
+void *CalcSubMips(void *threadarg)
 {
-   struct thread_data *my_data;
-   my_data = (struct thread_data *) threadarg;
+	struct thread_data *my_data;
+	my_data = (struct thread_data *) threadarg;
 
-  // go through all elements and check the maximum value
-	# pragma unroll
+	// go through all elements and check the maximum value
+# pragma unroll
 	for (uint64_t iY = my_data->startY; iY <= my_data->stopY; iY++)
 	{
-		#pragma unroll
+#pragma unroll
 		for (uint64_t iX = my_data->cropX[0]; iX < my_data->cropX[1]; iX++)
 		{
-			# pragma unroll
+# pragma unroll
 			for (uint64_t iZ = my_data->cropZ[0]; iZ < my_data->cropZ[1]; iZ++)
 			{
-				
+
 				const uint64_t currIdx = iZ + my_data->dim[0] * (iX + my_data->dim[1] * iY);
 				const float currVal = abs(my_data->data[currIdx]);
 
@@ -1331,11 +1323,11 @@ void *CalcSubMips(void *threadarg)
 				// update y mip
 				const uint64_t idxY = iX + my_data->dim[1] * iZ;
 				if (currVal > my_data->ptrMipY[idxY])
-					my_data->ptrMipY[idxY] = currVal;	
+					my_data->ptrMipY[idxY] = currVal;
 			}
 		}
 	}
-   pthread_exit(NULL);
+	pthread_exit(NULL);
 }
 
 // calculates the maximum intensity projections over a cropped range
@@ -1364,11 +1356,11 @@ void volume::calcCroppedMips()
 	const uint64_t deltaZ = idxCropRange[1] - idxCropRange[0] + 1; // total number of zs
 	const uint64_t deltaX = idxCropRange[3] - idxCropRange[2] + 1; // total number of zs
 	const uint64_t deltaY = idxCropRange[5] - idxCropRange[4] + 1; // total number of zs
-	
+
 	printf("Cropping range: %lu ... %lu, %lu ... %lu, %lu ... %lu\n",
-		idxCropRange[0], idxCropRange[1],
-		idxCropRange[2], idxCropRange[3],
-		idxCropRange[4], idxCropRange[5]);
+	       idxCropRange[0], idxCropRange[1],
+	       idxCropRange[2], idxCropRange[3],
+	       idxCropRange[4], idxCropRange[5]);
 
 	pthread_t threads[processor_count];
 	pthread_attr_t attr;
@@ -1388,7 +1380,7 @@ void volume::calcCroppedMips()
 		td[iProcessor].startY = iProcessor * nProcessorY;
 		const uint64_t stopY = (iProcessor + 1) * nProcessorY - 1;
 		td[iProcessor].stopY = (stopY >= deltaY) ? (deltaY - 1) : stopY;
-		
+
 		// include offset for ys
 		td[iProcessor].startY += idxCropRange[4];
 		td[iProcessor].stopY += idxCropRange[4];
@@ -1414,40 +1406,40 @@ void volume::calcCroppedMips()
 
 		int rc = pthread_create(&threads[iProcessor], &attr, CalcSubMips, (void *)&td[iProcessor]);
 		if (rc) {
-	  	cout << "Error:unable to create thread," << rc << endl;
-	    exit(-1);
-	  }
-	} 
+			cout << "Error:unable to create thread," << rc << endl;
+			exit(-1);
+		}
+	}
 
 	// wait for ecxecution
 	pthread_attr_destroy(&attr);
-  for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++ ) {
-      int 	rc = pthread_join(threads[iProcessor], &status);
-      if (rc) {
-         cout << "Error: unable to join," << rc << endl;
-         exit(-1);
-      }
-      // cout << "Main: completed thread id :" << iProcessor ;
-      // cout << "  exiting with status :" << status << endl;
-   }
+	for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++ ) {
+		int 	rc = pthread_join(threads[iProcessor], &status);
+		if (rc) {
+			cout << "Error: unable to join," << rc << endl;
+			exit(-1);
+		}
+		// cout << "Main: completed thread id :" << iProcessor ;
+		// cout << "  exiting with status :" << status << endl;
+	}
 
 	// fuse y mips
-  for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
-  {
-  	for (uint64_t idxLin = 0; idxLin < dim[0] * dim[1]; idxLin++)
-  	{
-  		if (mipYTemp[iProcessor][idxLin] > croppedMipY[idxLin])
-  			croppedMipY[idxLin] = mipYTemp[iProcessor][idxLin];
-  	}
-  }
+	for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
+	{
+		for (uint64_t idxLin = 0; idxLin < dim[0] * dim[1]; idxLin++)
+		{
+			if (mipYTemp[iProcessor][idxLin] > croppedMipY[idxLin])
+				croppedMipY[idxLin] = mipYTemp[iProcessor][idxLin];
+		}
+	}
 
 	// delete y mips
 	for (uint64_t iProcessor = 0; iProcessor < processor_count; iProcessor++)
 		delete[] mipYTemp[iProcessor];
-		
+
 	// set min and max val of cropping to the very first element
-	const uint64_t startIdx = idxCropRange[0] + dim[0] * (idxCropRange[2] + 
-		dim[1] * idxCropRange[4]);
+	const uint64_t startIdx = idxCropRange[0] + dim[0] * (idxCropRange[2] +
+	                          dim[1] * idxCropRange[4]);
 	maxValCrop = abs(data[startIdx]);
 	minValCrop = abs(data[startIdx]);
 
@@ -1475,7 +1467,7 @@ void volume::calcCroppedMips()
 	}
 
 	updatedCropRange = 0;
-	printf("Time taken: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+	printf("Time taken: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
 
 	return;
 }
@@ -1633,11 +1625,11 @@ void volume::fill_rand(const float minVal, const float maxVal)
 {
 	srand(time(0));
 	const float irmax = 1.0f / ((float) RAND_MAX);
-	#pragma unroll
+#pragma unroll
 	for (uint64_t iElem = 0; iElem < nElements; iElem++)
 	{
 		const float randVal = ((float) rand()) * irmax;
-		data[iElem] = (randVal * (maxVal - minVal)) + minVal; 
+		data[iElem] = (randVal * (maxVal - minVal)) + minVal;
 	}
 	return;
 }

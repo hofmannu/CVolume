@@ -5,6 +5,9 @@
 	Date: 05.08.2020
 
 	Description: Implementation of basic mathematical functions applied over arrays
+
+	Changelog:
+		2023-12-26: added static declaration to all functions of this class
 */
 
 #ifndef BASICMATHOP_H
@@ -25,59 +28,109 @@ enum class PolarityHandling {
 
 class basicMathOp
 {
-	public:
-		void handlePolarity(float* _array, const std::size_t _nElements, const PolarityHandling _method) const;
+public:
+	static void handlePolarity(float* _array,
+	                           std::size_t _nElements,
+	                           PolarityHandling _method);
 
-		float getNorm(const float* _array, const std::size_t _nElements) const;
-		
-		// MULTIPLICATION
-		// _array = _array * factor
-		void multiply(float* _array, const float _factor, const std::size_t _nElements) const;
-		// _arrayA = _arrayA * _arrayB
-		void multiply(float* _arrayA, const float*  _arrayB, const std::size_t _nElements) const;
-		// _arrayA = _arrayB * arrayC
-		void multiply(float* _arrayA, const float* _arrayB, const float* _arrayC, const std::size_t _nElements) const;
-		// _arrayA = _arrayB * _factor
-		void multiply(float* _arrayA, const float* _arrayB, const float factor, const std::size_t _nElements) const;
+	static float getNorm(const float* _array,
+	                     std::size_t _nElements);
 
-		// DIVISIONS
-		// _array = _array / _factor
-		void divide(float* _array, const float _factor, const std::size_t _nElements) const;
-		// _arrayA = _arrayA / _arrayB
-		void divide(float* _arrayA, const float* _arrayB, const std::size_t _nElements) const;
-		// _arrayA = _arrayB / _arrayC
-		void divide(float* _arrayA, const float* _arrayB, const float* _arrayC, const std::size_t _nElements) const;
-		// _arrayA = _arrayB / _factor
-		void divide(float* _arrayA, const float* _arrayB, const float factor, const std::size_t _nElements) const;
+	// MULTIPLICATION
+	// _array = _array * factor
+	static void multiply(float* _array,
+	                     const float _factor,
+	                     std::size_t _nElements) ;
 
-		void normalize(float* _array, const std::size_t _nElements) const;
-		
-		// SUBSTRACTIONS
-		// arrayA = arrayA - arrayB
-		void substract(float* _arrayA, const float* _arrayB, const std::size_t _nElements) const;
-		// arrayA = arrayA - value 
-		void substract(float* _arrayA, const float _value, const std::size_t _nElements) const;
-		// arrayA = arrayB - arrayC
-		void substract(float* _arrayA, const float* _arrayB, const float* _arrayC, const std::size_t _nElements) const;
+	// _arrayA = _arrayA * _arrayB
+	static void multiply(float* _arrayA,
+	                     const float*  _arrayB,
+	                     std::size_t _nElements) ;
 
-		// ADDITIONS
-		// arrayA = arrayA + arrayB
-		void add(float* _arrayA, const float* _arrayB, const std::size_t _nElements) const;
-		// arrayA = arrayA + value
-		void add(float* _arrayA, const float _value, const std::size_t _nElements) const;
-		// arrayA = arrayB + arrayC
-		void add(float* _arrayA, const float* _arrayB, const float* _arrayC, const std::size_t _nElements) const;
+	// _arrayA = _arrayB * arrayC
+	static void multiply(float* _arrayA,
+	                     const float* _arrayB,
+	                     const float* _arrayC,
+	                     std::size_t _nElements);
 
-		// set an array to equal elements for its full length _arrayOut = _arrayIn
-		void assign(float* _arrayOut, const float* _arrayIn, const std::size_t _nElements) const;
+	// _arrayA = _arrayB * _factor
+	static void multiply(float* _arrayA,
+	                     const float* _arrayB,
+	                     float factor,
+	                     std::size_t _nElements) ;
 
-		// set all elements in array to random values
-		void assignRand(float* _array, const std::size_t _nElements) const;
+	// DIVISIONS
+	// _array = _array / _factor
+	static void divide(float* _array,
+	                   const float _factor,
+	                   std::size_t _nElements);
 
-		float getMaxAbs(const float* _array, const std::size_t _nElements) const;
-		// returns maximum absolute value in array
-		float getMin(const float* _array, const std::size_t _nElements);
-		float getMax(const float* _array, const std::size_t _nElements);
+	// _arrayA = _arrayA / _arrayB
+	static void divide(float* _arrayA,
+	                   const float* _arrayB,
+	                   std::size_t _nElements) ;
+	// _arrayA = _arrayB / _arrayC
+	static void divide(float* _arrayA,
+	                   const float* _arrayB,
+	                   const float* _arrayC,
+	                   std::size_t _nElements) ;
+	// _arrayA = _arrayB / _factor
+	static void divide(float* _arrayA,
+	                   const float* _arrayB,
+	                   const float factor,
+	                   std::size_t _nElements) ;
+
+	static void normalize(float* _array,
+	                      std::size_t _nElements) ;
+
+	// SUBSTRACTIONS
+	// arrayA = arrayA - arrayB
+	static void substract(float* _arrayA,
+	                      const float* _arrayB,
+	                      std::size_t _nElements) ;
+	// arrayA = arrayA - value
+	static void substract(float* _arrayA,
+	                      const float _value,
+	                      std::size_t _nElements) ;
+	// arrayA = arrayB - arrayC
+	static void substract(float* _arrayA,
+	                      const float* _arrayB,
+	                      const float* _arrayC,
+	                      std::size_t _nElements) ;
+
+	// ADDITIONS
+	// arrayA = arrayA + arrayB
+	static void add(float* _arrayA,
+	                const float* _arrayB,
+	                std::size_t _nElements) ;
+	// arrayA = arrayA + value
+	static void add(float* _arrayA,
+	                float _value,
+	                std::size_t _nElements) ;
+
+	// arrayA = arrayB + arrayC
+	static void add(float* _arrayA,
+	                const float* _arrayB,
+	                const float* _arrayC,
+	                std::size_t _nElements) ;
+
+	// set an array to equal elements for its full length _arrayOut = _arrayIn
+	static void assign(float* _arrayOut,
+	                   const float* _arrayIn,
+	                   std::size_t _nElements) ;
+
+	// set all elements in array to random values
+	static void assignRand(float* _array,
+	                       std::size_t _nElements) ;
+
+	[[nodiscard]] static float getMaxAbs(const float* _array,
+	                                     std::size_t _nElements) ;
+	// returns maximum absolute value in array
+	[[nodiscard]] static float getMin(const float* _array,
+	                                  std::size_t _nElements);
+
+	[[nodiscard]] static float getMax(const float* _array,
+	                                  std::size_t _nElements);
 
 
 };

@@ -40,61 +40,16 @@ using namespace std;
 
 class volume : public baseClass, public basicMathOp
 {
-private:
-	string inPath; // path pointing to our input file
-
-	std::size_t dim[3] = {0, 0, 0}; // dimensionailty of volume
-	std::size_t nElements = 0; // overall number of elements in 
-	float origin[3] = {0, 0, 0}; // origin of volume
-	float res[3] = {1, 1, 1}; // resolution of volume
-
-	float minVal = 0; // minimum value in full dataset
-	float maxVal = 0; // maximum value in full dataset
-	float maxAbsVal = 0; // absolute maximum value in full dataset
-
-	float* data; // matrix containing data
-	bool isMemAlloc = 0; // did we allocate memory
-
-	// z slice array which will be only updated if new slice is requested
-	float* sliceZ; // indexing [iX, iY]
-	std::size_t lastSliceZ = 0;
-	float* sliceX; // indexing [iZ, iY]
-	std::size_t lastSliceX = 0;
-	float* sliceY; // indexing [iX, iZ]
-	std::size_t lastSliceY = 0;
-
-	// maximum intensity projections
-	float* mipZ; // indexing: [iX, iY], iX + nX * iY
-	float* mipX; // indexing: [iZ, iY], iZ + nZ * iY
-	float* mipY; // indexing: [iX, iZ], iX + nX * iZ
-
-	// maximum intensity projections (cropped)
-	float* croppedMipZ; // indexing: [iX, iY], iX + nX * iY
-	float* croppedMipX; // indexing: [iZ, iY], iZ + nZ * iY
-	float* croppedMipY; // indexing: [iX, iZ], iX + nX * iZ
-
-	float cropRange[6] = {0, 0, 0, 0, 0, 0}; // crop range for submips
-	bool updatedCropRange = 0; // indicator if the cropped boundaries were updated
-	// order: zMin, zMax, xMin, xMax, yMin, yMax
-	float minValCrop = 0;
-	float maxValCrop = 0;
-
-	int processor_count = 1; // variable containing the number of CPU processing units
-	
-	vector<std::thread> workers;
-
-	nifti_1_header hdr;
-
 
 public:
 	// class constructor and destructor
 	volume(); // class constructor
 	volume(const std::size_t _dim0, const std::size_t _dim1, const std::size_t _dim2);
-	~volume(); // class destructor
-
-	// copy constructor
 	volume(const volume& obj);
 
+	~volume(); // class destructor
+
+	
 	void construct(); // common tasks for all constructor types
 
 	// check if volumes are the same or not the same
@@ -271,6 +226,51 @@ public:
 	void fill_rand(); // fill array with random values
 	void fill_rand(const float maxVal); // fill array with random values
 	void fill_rand(const float minVal, const float maxVal); // fill array with random values
+
+private:
+	std::string inPath; // path pointing to our input file
+
+	std::size_t dim[3] = {0, 0, 0}; // dimensionailty of volume
+	std::size_t nElements = 0; // overall number of elements in 
+	float origin[3] = {0, 0, 0}; // origin of volume
+	float res[3] = {1, 1, 1}; // resolution of volume
+
+	float minVal = 0; // minimum value in full dataset
+	float maxVal = 0; // maximum value in full dataset
+	float maxAbsVal = 0; // absolute maximum value in full dataset
+
+	float* data; // matrix containing data
+	bool isMemAlloc = 0; // did we allocate memory
+
+	// z slice array which will be only updated if new slice is requested
+	float* sliceZ; // indexing [iX, iY]
+	std::size_t lastSliceZ = 0;
+	float* sliceX; // indexing [iZ, iY]
+	std::size_t lastSliceX = 0;
+	float* sliceY; // indexing [iX, iZ]
+	std::size_t lastSliceY = 0;
+
+	// maximum intensity projections
+	float* mipZ; // indexing: [iX, iY], iX + nX * iY
+	float* mipX; // indexing: [iZ, iY], iZ + nZ * iY
+	float* mipY; // indexing: [iX, iZ], iX + nX * iZ
+
+	// maximum intensity projections (cropped)
+	float* croppedMipZ; // indexing: [iX, iY], iX + nX * iY
+	float* croppedMipX; // indexing: [iZ, iY], iZ + nZ * iY
+	float* croppedMipY; // indexing: [iX, iZ], iX + nX * iZ
+
+	float cropRange[6] = {0, 0, 0, 0, 0, 0}; // crop range for submips
+	bool updatedCropRange = 0; // indicator if the cropped boundaries were updated
+	// order: zMin, zMax, xMin, xMax, yMin, yMax
+	float minValCrop = 0;
+	float maxValCrop = 0;
+
+	const int processor_count; //!< number of CPU processing units
+	
+	vector<std::thread> workers;
+
+	nifti_1_header hdr;
 };
 
 #endif
