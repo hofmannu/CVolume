@@ -670,6 +670,8 @@ void volume::save_nii(const std::string& _filePath) const
 	nifti_1_header hdr_cpy = hdr;
 
 	hdr_cpy.datatype = DT_FLOAT;
+	hdr_cpy.vox_offset = (float) NII_HEADER_SIZE;
+	hdr_cpy.sizeof_hdr = MIN_HEADER_SIZE;
 
 	FILE *fp = fopen(_filePath.c_str(), "w");
 	if (fp == NULL)
@@ -710,14 +712,14 @@ void volume::read_nii(const std::string& _filePath)
 	if (fp == NULL)
 	{
 		printf("Error opening header file %s\n", inPath.c_str());
-		throw "FileError";
+		throw std::runtime_error("FileError");
 	}
 
 	int ret = fread(&hdr, MIN_HEADER_SIZE, 1, fp);
 	if (ret != 1)
 	{
 		printf("Error reading header file %s\n", inPath.c_str());
-		throw "OperationFailed";
+		throw std::runtime_error("OperationFailed");
 	}
 
 	ret = fseek(fp, (long)(hdr.vox_offset), SEEK_SET);
@@ -725,7 +727,7 @@ void volume::read_nii(const std::string& _filePath)
 	{
 		printf("Error doing fseek() to %ld in data file %s\n",
 		       (long)(hdr.vox_offset), inPath.c_str());
-		throw "InvalidOperation";
+		throw std::runtime_error("InvalidOperation");
 	}
 
 	// move dimensions from header struct to volume
@@ -746,25 +748,22 @@ void volume::read_nii(const std::string& _filePath)
 	}
 	else if (hdr.datatype == DT_INT16)
 	{
-		int16_t* tempArray = new int16_t[hdr.dim[1] * hdr.dim[2] * hdr.dim[3]];
-		ret = fread(tempArray, sizeof(int16_t), hdr.dim[1] * hdr.dim[2] * hdr.dim[3], fp);
+		std::vector<int16_t> tempArray (hdr.dim[1] * hdr.dim[2] * hdr.dim[3]);
+		ret = fread(tempArray.data(), sizeof(int16_t), tempArray.size(), fp);
 		if (ret != nElements)
 		{
-			printf("Error reading volume 1 from %s (%d)\n",
-			       inPath.c_str(), ret);
-			exit(1);
+			printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
+			throw std::runtime_error("ReadError");
 		}
 
-		// convert to float
-		for (int iElem = 0; iElem < (hdr.dim[1] * hdr.dim[2] * hdr.dim[3]); iElem++)
-			data[iElem] = (float) tempArray[iElem];
+		for (int iElem = 0; iElem < tempArray.size(); iElem++)
+			data[iElem] = static_cast<float>(tempArray[iElem]);
 
-		delete[] tempArray;
 	}
 	else
 	{
 		printf("Data type %d requires implementation!\n", hdr.datatype);
-		throw "InvalidValue";
+		throw std::runtime_error("InvalidValue");
 	}
 
 	fclose(fp);
@@ -772,7 +771,7 @@ void volume::read_nii(const std::string& _filePath)
 	// scale the data buffer
 	if (hdr.scl_slope != 0)
 	{
-		for (int i = 0; i < hdr.dim[1] * hdr.dim[2] * hdr.dim[3]; i++)
+		for (int i = 0; i < data.size(); i++)
 			data[i] = (data[i] * hdr.scl_slope) + hdr.scl_inter;
 	}
 }

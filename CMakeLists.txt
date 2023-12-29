@@ -16,6 +16,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(src/)
 add_subdirectory(lib/)
+add_subdirectory(tools/)
 
 # here comes all stugg related to unit testing
 add_subdirectory(utests/)
