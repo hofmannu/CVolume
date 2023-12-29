@@ -672,6 +672,16 @@ void volume::save_nii(const std::string& _filePath) const
 	hdr_cpy.datatype = DT_FLOAT;
 	hdr_cpy.vox_offset = (float) NII_HEADER_SIZE;
 	hdr_cpy.sizeof_hdr = MIN_HEADER_SIZE;
+	hdr_cpy.dim[0] = 3;
+	hdr_cpy.dim[1] = dim[0];
+	hdr_cpy.dim[2] = dim[1];
+	hdr_cpy.dim[3] = dim[2];
+
+	hdr_cpy.pixdim[1] = res[0];
+	hdr_cpy.pixdim[2] = res[1];
+	hdr_cpy.pixdim[3] = res[2];
+
+	hdr_cpy.bitpix = 32;
 
 	FILE *fp = fopen(_filePath.c_str(), "w");
 	if (fp == NULL)
