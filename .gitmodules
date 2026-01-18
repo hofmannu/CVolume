@@ -1,3 +1,6 @@
 [submodule "lib/matio"]
 	path = lib/matio
 	url = https://github.com/tbeu/matio.git
+[submodule "lib/nifti"]
+	path = lib/nifti
+	url = https://github.com/NIFTI-Imaging/nifti_clib.git
