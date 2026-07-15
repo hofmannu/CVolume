@@ -1,5 +1,6 @@
 #include "volume.h"
 #include <cassert>
+#include <cstdint>
 
 // default empty constructor
 volume::volume() : baseClass("volume"), processor_count(std::thread::hardware_concurrency()) {}
@@ -605,26 +606,35 @@ void volume::read_nii(const std::string& _filePath) {
   // 	hdr.dim[1], hdr.dim[2], hdr.dim[3]);
   alloc_memory();
 
-  if (hdr.datatype == DT_FLOAT) {
-    ret = fread(data.data(), sizeof(float), nElements, fp);
-    if (ret != nElements) {
-      printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
-      exit(1);
-    }
-  } else if (hdr.datatype == DT_INT16) {
-    std::vector<int16_t> tempArray(hdr.dim[1] * hdr.dim[2] * hdr.dim[3]);
-    ret = fread(tempArray.data(), sizeof(int16_t), tempArray.size(), fp);
-    if (ret != nElements) {
-      printf("Error reading volume 1 from %s (%d)\n", inPath.c_str(), ret);
+  // Read the raw voxels as their stored type and cast every element to the
+  // float buffer used internally. A single generic lambda keeps all supported
+  // scalar datatypes on one code path.
+  auto readAs = [&](auto sample) {
+    using T = decltype(sample);
+    std::vector<T> tempArray(nElements);
+    ret = fread(tempArray.data(), sizeof(T), tempArray.size(), fp);
+    if (static_cast<std::size_t>(ret) != nElements) {
+      printf("Error reading volume data from %s (%d)\n", inPath.c_str(), ret);
       throw std::runtime_error("ReadError");
     }
-
-    for (int iElem = 0; iElem < tempArray.size(); iElem++)
+    for (std::size_t iElem = 0; iElem < nElements; iElem++)
       data[iElem] = static_cast<float>(tempArray[iElem]);
+  };
 
-  } else {
-    printf("Data type %d requires implementation!\n", hdr.datatype);
-    throw std::runtime_error("InvalidValue");
+  switch (hdr.datatype) {
+    case DT_UINT8:   readAs(uint8_t{});  break; // == DT_UNSIGNED_CHAR
+    case DT_INT8:    readAs(int8_t{});   break;
+    case DT_INT16:   readAs(int16_t{});  break; // == DT_SIGNED_SHORT
+    case DT_UINT16:  readAs(uint16_t{}); break;
+    case DT_INT32:   readAs(int32_t{});  break; // == DT_SIGNED_INT
+    case DT_UINT32:  readAs(uint32_t{}); break;
+    case DT_INT64:   readAs(int64_t{});  break;
+    case DT_UINT64:  readAs(uint64_t{}); break;
+    case DT_FLOAT32: readAs(float{});    break; // == DT_FLOAT
+    case DT_FLOAT64: readAs(double{});   break; // == DT_DOUBLE
+    default:
+      printf("Data type %d is not supported yet!\n", hdr.datatype);
+      throw std::runtime_error("InvalidValue");
   }
 
   fclose(fp);
